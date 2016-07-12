@@ -13,11 +13,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#define _GNU_SOURCE
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 #include <errno.h>
 #include <time.h>
+#include <pthread.h>
 #include <glib.h>
 #include <system_info.h>
 #include <system_settings.h>
@@ -54,7 +56,7 @@ static const char *IC_SYSTEM_INFO_BUILD_STRING = "http://tizen.org/system/build.
 static const char *IC_SYSTEM_INFO_TIZEN_ID = "http://tizen.org/system/tizenid";
 
 static pthread_mutex_t ic_utils_mutex_init = PTHREAD_MUTEX_INITIALIZER;
-static pthread_mutex_t ic_utils_mutex_ioty = PTHREAD_MUTEX_INITIALIZER;
+static pthread_mutex_t ic_utils_mutex_ioty = PTHREAD_RECURSIVE_MUTEX_INITIALIZER_NP;
 static pthread_mutex_t ic_utils_mutex_polling = PTHREAD_MUTEX_INITIALIZER;
 static pthread_cond_t ic_utils_cond_polling;
 static __thread int ic_utils_pthread_oldstate;

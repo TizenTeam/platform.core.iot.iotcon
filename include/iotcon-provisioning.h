@@ -20,9 +20,14 @@
 
 #define IOTCON_ERROR_AUTHENTICATION_FAILURE (TIZEN_ERROR_IOTCON | 0xF001)
 
-typedef struct icl_provisioning_devices* iotcon_provisioning_devices_h;
 typedef struct icl_provisioning_device* iotcon_provisioning_device_h;
 typedef struct icl_provisioning_acl* iotcon_provisioning_acl_h;
+
+typedef enum {
+	IOTCON_PROVISIONING_FIND_OWNED,
+	IOTCON_PROVISIONING_FIND_UNOWNED,
+	IOTCON_PROVISIONING_FIND_ALL,
+} iotcon_provisioning_find_e;
 
 typedef enum {
 	IOTCON_PERMISSION_CREATE = (1 << 0),
@@ -48,32 +53,17 @@ int iotcon_provisioning_set_randompin_cb(iotcon_provisioning_randompin_cb cb,
 		void *user_data);
 
 /* discover */
-int iotcon_provisioning_get_devices(iotcon_provisioning_devices_h *owned_devices,
-		iotcon_provisioning_devices_h *unowned_devices);
+typedef bool (*iotcon_provisioning_found_device_cb)(iotcon_provisioning_device_h device,
+		iotcon_error_e result, void *user_data);
 
-typedef void (*iotcon_provisioning_found_devices_cb)(
-		iotcon_provisioning_devices_h owned_devices,
-		iotcon_provisioning_devices_h unowned_devices,
-		void *user_data);
+int iotcon_provisioning_find_device(iotcon_provisioning_find_e owned,
+		iotcon_provisioning_found_device_cb cb, void *user_data);
 
-int iotcon_provisioning_find_all_devices(int timeout,
-		iotcon_provisioning_found_devices_cb cb, void *user_data);
-
-int iotcon_provisioning_find_unowned_devices(int timeout,
-		iotcon_provisioning_found_devices_cb cb, void *user_data);
-
-int iotcon_provisioning_find_owned_devices(int timeout,
-		iotcon_provisioning_found_devices_cb cb, void *user_data);
 
 /* register */
 typedef void (*iotcon_provisioning_ownership_transfer_cb)(
 		iotcon_provisioning_device_h device,
 		iotcon_error_e result,
-		void *user_data);
-
-int iotcon_provisioning_register_unowned_devices(
-		iotcon_provisioning_devices_h devices,
-		iotcon_provisioning_ownership_transfer_cb cb,
 		void *user_data);
 
 int iotcon_provisioning_register_unowned_device(
@@ -132,13 +122,15 @@ int iotcon_provisioning_unlink_pairwise(iotcon_provisioning_device_h device1,
 		void *user_data);
 
 /* remove */
-typedef void (*iotcon_provisioning_remove_device_cb)(iotcon_provisioning_device_h device,
-		iotcon_error_e result, void *user_data);
-
-int iotcon_provisioning_remove_device(int timeout,
-		iotcon_provisioning_device_h device,
-		iotcon_provisioning_remove_device_cb cb,
+typedef void (*iotcon_provisioning_remove_device_cb)(
+		const char *device_id,
+		iotcon_provisioning_device_h dest_device,
+		iotcon_error_e result,
+		bool is_complete,
 		void *user_data);
+
+int iotcon_provisioning_remove_device(const char *device_id,
+		iotcon_provisioning_remove_device_cb cb, void *user_data);
 
 /* struct */
 int iotcon_provisioning_device_clone(iotcon_provisioning_device_h device,
@@ -154,21 +146,6 @@ int iotcon_provisioning_device_get_oxm(iotcon_provisioning_device_h device,
 		iotcon_provisioning_oxm_e *oxm);
 int iotcon_provisioning_device_is_owned(iotcon_provisioning_device_h device,
 		bool *is_owned);
-
-int iotcon_provisioning_devices_create(iotcon_provisioning_devices_h *devices);
-int iotcon_provisioning_devices_destroy(iotcon_provisioning_devices_h devices);
-int iotcon_provisioning_devices_clone(iotcon_provisioning_devices_h devices,
-		iotcon_provisioning_devices_h *cloned_devices);
-
-typedef bool (*iotcon_provisioning_devices_foreach_cb)(
-		iotcon_provisioning_devices_h devices,
-		iotcon_provisioning_device_h device,
-		void *user_data);
-int iotcon_provisioning_devices_foreach(iotcon_provisioning_devices_h devices,
-		iotcon_provisioning_devices_foreach_cb cb, void *user_data);
-
-int iotcon_provisioning_devices_add_device(iotcon_provisioning_devices_h devices,
-		iotcon_provisioning_device_h device);
 
 int iotcon_provisioning_acl_create(iotcon_provisioning_acl_h *acl);
 int iotcon_provisioning_acl_set_all_subject(iotcon_provisioning_acl_h acl);

@@ -35,30 +35,14 @@
 
 #define ICL_PROVISIONING_TIMEOUT_MAX 10
 
-typedef enum {
-	ICL_PROVISIONING_DISCOVER_ALL_DEVICES,
-	ICL_PROVISIONING_DISCOVER_OWNED_DEVICES,
-	ICL_PROVISIONING_DISCOVER_UNOWNED_DEVICES,
-	ICL_PROVISIONING_REMOVE_DEVICE,
-} icl_provisioning_discover_e;
-
 struct icl_provisioning_randompin_cb_container {
 	iotcon_provisioning_randompin_cb cb;
 	void *user_data;
 };
 
-struct icl_provisioning_discover_cb_container {
-	int timeout;
-	iotcon_provisioning_found_devices_cb cb;
-	void *user_data;
-	iotcon_provisioning_devices_h owned_devices;
-	iotcon_provisioning_devices_h unowned_devices;
-};
-
 struct icl_provisioning_ownership_transfer_cb_container {
-	int count;
-	OCProvisionResult_t *result_list;
-	iotcon_provisioning_devices_h devices;
+	int result;
+	iotcon_provisioning_device_h device;
 	iotcon_provisioning_ownership_transfer_cb cb;
 	void *user_data;
 };
@@ -97,22 +81,9 @@ struct icl_provisioning_unlink_pairwise_cb_container {
 	void *user_data;
 };
 
-struct icl_provisioning_remove_device_cb_container {
-	int timeout;
-	iotcon_provisioning_device_h device;
-	iotcon_error_e result;
-	iotcon_provisioning_remove_device_cb cb;
-	void *user_data;
-};
-
 static OTMCallbackData_t icl_justworks_otmcb;
 static OTMCallbackData_t icl_pinbased_otmcb;
 static struct icl_provisioning_randompin_cb_container icl_randompin_cb_container;
-
-static iotcon_provisioning_devices_h icl_owned_devices;
-static iotcon_provisioning_devices_h icl_unowned_devices;
-
-static void* _provisioning_remove_device_thread(void *user_data);
 
 static iotcon_error_e _provisioning_parse_oic_error(OCStackResult ret)
 {
@@ -127,6 +98,7 @@ static iotcon_error_e _provisioning_parse_oic_error(OCStackResult ret)
 		return ic_ioty_parse_oic_error(ret);
 	}
 }
+
 
 static void _provisioning_set_justworks()
 {
@@ -250,457 +222,26 @@ API int iotcon_provisioning_set_randompin_cb(iotcon_provisioning_randompin_cb cb
 }
 
 
-API int iotcon_provisioning_get_devices(iotcon_provisioning_devices_h *owned_devices,
-		iotcon_provisioning_devices_h *unowned_devices)
-{
-	FN_CALL;
-
-	RETV_IF(NULL == owned_devices && NULL == unowned_devices,
-			IOTCON_ERROR_INVALID_PARAMETER);
-
-	if (owned_devices)
-		*owned_devices = icl_owned_devices;
-
-	if (unowned_devices)
-		*unowned_devices = icl_unowned_devices;
-
-	return IOTCON_ERROR_NONE;
-}
-
-
-static void _provisioning_discover_cb_container_destroy(
-		struct icl_provisioning_discover_cb_container *container)
-{
-	FN_CALL;
-
-	if (container->owned_devices) {
-		iotcon_provisioning_devices_destroy(container->owned_devices);
-		container->owned_devices = NULL;
-	}
-
-	if (container->unowned_devices) {
-		iotcon_provisioning_devices_destroy(container->unowned_devices);
-		container->unowned_devices = NULL;
-	}
-
-	free(container);
-}
-
-
-static gboolean _provisioning_discover_idle_cb(gpointer p)
-{
-	FN_CALL;
-	struct icl_provisioning_discover_cb_container *container = p;
-
-	DBG("discovered owned devices");
-	icl_provisioning_devices_print_uuid(container->owned_devices);
-	DBG("discovered unowned devices");
-	icl_provisioning_devices_print_uuid(container->unowned_devices);
-
-	icl_provisioning_devices_set_found(container->owned_devices);
-	icl_provisioning_devices_set_found(container->unowned_devices);
-
-	if (container->cb)
-		container->cb(container->owned_devices, container->unowned_devices,
-				container->user_data);
-
-	icl_provisioning_devices_unset_found(container->unowned_devices);
-	icl_provisioning_devices_unset_found(container->owned_devices);
-
-	_provisioning_discover_cb_container_destroy(container);
-
-	return G_SOURCE_REMOVE;
-}
-
-
-static void* _provisioning_discover_all_thread(void *user_data)
-{
-	FN_CALL;
-	int ret;
-	OCProvisionDev_t *owned_list = NULL;
-	OCProvisionDev_t *unowned_list = NULL;
-	iotcon_provisioning_devices_h temp_devices;
-	struct icl_provisioning_discover_cb_container *container = user_data;
-
-	ret = icl_ioty_mutex_lock();
-	if (IOTCON_ERROR_NONE != ret) {
-		ERR("icl_ioty_mutex_lock() Fail(%d)", ret);
-		return NULL;
-	}
-
-	ret = OCGetDevInfoFromNetwork(container->timeout, &owned_list, &unowned_list);
-	icl_ioty_mutex_unlock();
-	if (OC_STACK_OK != ret) {
-		ERR("OCGetDevInfoFromNetwork() Fail(%d)", ret);
-		_provisioning_discover_cb_container_destroy(container);
-		return NULL;
-	}
-
-	if (owned_list) {
-		ret = icl_provisioning_devices_create(owned_list, &container->owned_devices);
-		if (IOTCON_ERROR_NONE != ret) {
-			ERR("icl_provisioning_devices_create() Fail(%d)", ret);
-			_provisioning_discover_cb_container_destroy(container);
-			return NULL;
-		}
-
-		ret = iotcon_provisioning_devices_clone(container->owned_devices, &temp_devices);
-		if (IOTCON_ERROR_NONE != ret) {
-			ERR("iotcon_provisioning_devices_clone() Fail(%d)", ret);
-			return NULL;
-		}
-
-		if (icl_owned_devices) {
-			icl_provisioning_devices_unset_found(icl_owned_devices);
-			iotcon_provisioning_devices_destroy(icl_owned_devices);
-		}
-		icl_owned_devices = temp_devices;
-		icl_provisioning_devices_set_found(icl_owned_devices);
-	}
-
-	if (unowned_list) {
-		ret = icl_provisioning_devices_create(unowned_list, &container->unowned_devices);
-		if (IOTCON_ERROR_NONE != ret) {
-			ERR("icl_provisioning_devices_create() Fail(%d)", ret);
-			_provisioning_discover_cb_container_destroy(container);
-			return NULL;
-		}
-
-		ret = iotcon_provisioning_devices_clone(container->unowned_devices, &temp_devices);
-		if (IOTCON_ERROR_NONE != ret) {
-			ERR("iotcon_provisioning_devices_clone() Fail(%d)", ret);
-			return NULL;
-		}
-
-		if (icl_unowned_devices) {
-			icl_provisioning_devices_unset_found(icl_unowned_devices);
-			iotcon_provisioning_devices_destroy(icl_unowned_devices);
-		}
-		icl_unowned_devices = temp_devices;
-		icl_provisioning_devices_set_found(icl_unowned_devices);
-	}
-
-	g_idle_add(_provisioning_discover_idle_cb, container);
-
-	return NULL;
-}
-
-
-static void* _provisioning_discover_unowned_thread(void *user_data)
-{
-	FN_CALL;
-	int ret;
-	OCProvisionDev_t *unowned_list = NULL;
-	iotcon_provisioning_devices_h temp_devices;
-	struct icl_provisioning_discover_cb_container *container = user_data;
-
-	ret = icl_ioty_mutex_lock();
-	if (IOTCON_ERROR_NONE != ret) {
-		ERR("icl_ioty_mutex_lock() Fail(%d)", ret);
-		return NULL;
-	}
-
-	ret = OCDiscoverUnownedDevices(container->timeout, &unowned_list);
-	icl_ioty_mutex_unlock();
-	if (OC_STACK_OK != ret) {
-		ERR("OCDiscoverUnownedDevices() Fail(%d)", ret);
-		_provisioning_discover_cb_container_destroy(container);
-		return NULL;
-	}
-
-	if (unowned_list) {
-		ret = icl_provisioning_devices_create(unowned_list, &container->unowned_devices);
-		if (IOTCON_ERROR_NONE != ret) {
-			ERR("icl_provisioning_devices_create() Fail(%d)", ret);
-			_provisioning_discover_cb_container_destroy(container);
-			return NULL;
-		}
-
-		ret = iotcon_provisioning_devices_clone(container->unowned_devices, &temp_devices);
-		if (IOTCON_ERROR_NONE != ret) {
-			ERR("iotcon_provisioning_devices_clone() Fail(%d)", ret);
-			return NULL;
-		}
-
-		if (icl_unowned_devices) {
-			icl_provisioning_devices_unset_found(icl_unowned_devices);
-			iotcon_provisioning_devices_destroy(icl_unowned_devices);
-		}
-		icl_unowned_devices = temp_devices;
-		icl_provisioning_devices_set_found(icl_unowned_devices);
-	}
-
-	g_idle_add(_provisioning_discover_idle_cb, container);
-
-	return NULL;
-}
-
-
-static void* _provisioning_discover_owned_thread(void *user_data)
-{
-	FN_CALL;
-	int ret;
-	OCProvisionDev_t *owned_list = NULL;
-	iotcon_provisioning_devices_h temp_devices;
-	struct icl_provisioning_discover_cb_container *container = user_data;
-
-	ret = icl_ioty_mutex_lock();
-	if (IOTCON_ERROR_NONE != ret) {
-		ERR("icl_ioty_mutex_lock() Fail(%d)", ret);
-		return NULL;
-	}
-
-	ret = OCDiscoverOwnedDevices(container->timeout, &owned_list);
-	icl_ioty_mutex_unlock();
-	if (OC_STACK_OK != ret) {
-		ERR("OCDiscoverOwnedDevices() Fail(%d)", ret);
-		_provisioning_discover_cb_container_destroy(container);
-		return NULL;
-	}
-
-	if (owned_list) {
-		ret = icl_provisioning_devices_create(owned_list, &container->owned_devices);
-		if (IOTCON_ERROR_NONE != ret) {
-			ERR("icl_provisioning_devices_create() Fail(%d)", ret);
-			_provisioning_discover_cb_container_destroy(container);
-			return NULL;
-		}
-
-		ret = iotcon_provisioning_devices_clone(container->owned_devices, &temp_devices);
-		if (IOTCON_ERROR_NONE != ret) {
-			ERR("iotcon_provisioning_devices_clone() Fail(%d)", ret);
-			return NULL;
-		}
-
-		if (icl_owned_devices) {
-			icl_provisioning_devices_unset_found(icl_owned_devices);
-			iotcon_provisioning_devices_destroy(icl_owned_devices);
-		}
-		icl_owned_devices = temp_devices;
-		icl_provisioning_devices_set_found(icl_owned_devices);
-	}
-
-	g_idle_add(_provisioning_discover_idle_cb, container);
-
-	return NULL;
-}
-
-
-static int _provisioning_thread(int type, void *user_data)
-{
-	int ret;
-	pthread_t thread;
-	void *thread_routine;
-
-	switch (type) {
-	case ICL_PROVISIONING_DISCOVER_ALL_DEVICES:
-		thread_routine = _provisioning_discover_all_thread;
-		break;
-	case ICL_PROVISIONING_DISCOVER_OWNED_DEVICES:
-		thread_routine = _provisioning_discover_owned_thread;
-		break;
-	case ICL_PROVISIONING_DISCOVER_UNOWNED_DEVICES:
-		thread_routine = _provisioning_discover_unowned_thread;
-		break;
-	case ICL_PROVISIONING_REMOVE_DEVICE:
-		thread_routine = _provisioning_remove_device_thread;
-		break;
-	default:
-		ERR("Invalid Type(%d)", type);
-		return IOTCON_ERROR_INVALID_TYPE;
-	}
-
-	ret = pthread_create(&thread, NULL, thread_routine, user_data);
-	if (0 != ret) {
-		ERR("pthread_create() Fail(%d)", ret);
-		return IOTCON_ERROR_SYSTEM;
-	}
-	pthread_detach(thread);
-
-	return IOTCON_ERROR_NONE;
-}
-
-
-API int iotcon_provisioning_find_all_devices(int timeout,
-		iotcon_provisioning_found_devices_cb cb, void *user_data)
-{
-	FN_CALL;
-	int ret;
-	struct icl_provisioning_discover_cb_container *container;
-
-	RETV_IF(false == ic_utils_check_ocf_feature(), IOTCON_ERROR_NOT_SUPPORTED);
-	RETV_IF(timeout < 0 || ICL_PROVISIONING_TIMEOUT_MAX < timeout,
-			IOTCON_ERROR_INVALID_PARAMETER);
-	RETV_IF(NULL == cb, IOTCON_ERROR_INVALID_PARAMETER);
-
-	INFO("Discover All Devices");
-
-	container = calloc(1, sizeof(struct icl_provisioning_discover_cb_container));
-	if (NULL == container) {
-		ERR("calloc() Fail(%d)", errno);
-		return IOTCON_ERROR_OUT_OF_MEMORY;
-	}
-
-	container->timeout = timeout;
-	container->cb = cb;
-	container->user_data = user_data;
-
-	ret = _provisioning_thread(ICL_PROVISIONING_DISCOVER_ALL_DEVICES, container);
-	if (IOTCON_ERROR_NONE != ret) {
-		ERR("_provisioning_thread() Fail(%d)", ret);
-		_provisioning_discover_cb_container_destroy(container);
-		return ret;
-	}
-
-	return IOTCON_ERROR_NONE;
-}
-
-
-API int iotcon_provisioning_find_unowned_devices(int timeout,
-		iotcon_provisioning_found_devices_cb cb, void *user_data)
-{
-	FN_CALL;
-	int ret;
-	struct icl_provisioning_discover_cb_container *container;
-
-	RETV_IF(false == ic_utils_check_ocf_feature(), IOTCON_ERROR_NOT_SUPPORTED);
-	RETV_IF(timeout < 0 || ICL_PROVISIONING_TIMEOUT_MAX < timeout,
-			IOTCON_ERROR_INVALID_PARAMETER);
-	RETV_IF(NULL == cb, IOTCON_ERROR_INVALID_PARAMETER);
-
-	INFO("Discover Unowned Devices");
-
-	container = calloc(1, sizeof(struct icl_provisioning_discover_cb_container));
-	if (NULL == container) {
-		ERR("calloc() Fail(%d)", errno);
-		return IOTCON_ERROR_OUT_OF_MEMORY;
-	}
-
-	container->timeout = timeout;
-	container->cb = cb;
-	container->user_data = user_data;
-
-	ret = _provisioning_thread(ICL_PROVISIONING_DISCOVER_UNOWNED_DEVICES,
-			container);
-	if (IOTCON_ERROR_NONE != ret) {
-		ERR("_provisioning_thread() Fail(%d)", ret);
-		_provisioning_discover_cb_container_destroy(container);
-		return ret;
-	}
-
-	return IOTCON_ERROR_NONE;
-}
-
-
-API int iotcon_provisioning_find_owned_devices(int timeout,
-		iotcon_provisioning_found_devices_cb cb, void *user_data)
-{
-	FN_CALL;
-	int ret;
-	struct icl_provisioning_discover_cb_container *container;
-
-	RETV_IF(false == ic_utils_check_ocf_feature(), IOTCON_ERROR_NOT_SUPPORTED);
-	RETV_IF(timeout < 0 || ICL_PROVISIONING_TIMEOUT_MAX < timeout,
-			IOTCON_ERROR_INVALID_PARAMETER);
-	RETV_IF(NULL == cb, IOTCON_ERROR_INVALID_PARAMETER);
-
-	INFO("Discover Owned Devices");
-
-	container = calloc(1, sizeof(struct icl_provisioning_discover_cb_container));
-	if (NULL == container) {
-		ERR("calloc() Fail(%d)", errno);
-		return IOTCON_ERROR_OUT_OF_MEMORY;
-	}
-
-	container->timeout = timeout;
-	container->cb = cb;
-	container->user_data = user_data;
-
-	ret = _provisioning_thread(ICL_PROVISIONING_DISCOVER_OWNED_DEVICES,
-			container);
-	if (IOTCON_ERROR_NONE != ret) {
-		ERR("_provisioning_thread() Fail(%d)", ret);
-		_provisioning_discover_cb_container_destroy(container);
-		return ret;
-	}
-
-	return IOTCON_ERROR_NONE;
-}
-
-
 static void _provisioning_ownership_transfer_cb_container_destroy(
 		struct icl_provisioning_ownership_transfer_cb_container *container)
 {
-	if (container->devices) {
-		iotcon_provisioning_devices_destroy(container->devices);
-		container->devices = NULL;
+	if (container->device) {
+		iotcon_provisioning_device_destroy(container->device);
+		container->device = NULL;
 	}
 
-	free(container->result_list);
 	free(container);
-}
-
-
-static int _provisioning_ownership_transfer_get_result(
-		iotcon_provisioning_device_h device, OCProvisionResult_t *result_list, int count)
-{
-	int i, ret;
-	OCProvisionDev_t *oic_device;
-
-	oic_device = icl_provisioning_device_get_device(device);
-
-	for (i = 0; i < count; i++) {
-		if (true == icl_provisioning_compare_oic_uuid(&oic_device->doxm->deviceID,
-					(OicUuid_t*)&result_list[i].deviceId)) {
-			ret = _provisioning_parse_oic_error(result_list[i].res);
-			if (IOTCON_ERROR_NONE == ret) {
-				icl_provisioning_devices_move_device((OicUuid_t*)&result_list[i].deviceId,
-						icl_unowned_devices, icl_owned_devices);
-			}
-			return ret;
-		}
-	}
-
-	return IOTCON_ERROR_IOTIVITY;
-}
-
-
-static bool _provisioning_ownership_transfer_foreach_cb(
-		iotcon_provisioning_devices_h devices,
-		iotcon_provisioning_device_h device,
-		void *user_data)
-{
-	int result;
-	struct icl_provisioning_ownership_transfer_cb_container *container = user_data;
-
-	result = _provisioning_ownership_transfer_get_result(device, container->result_list,
-			container->count);
-
-	icl_provisioning_device_set_found(device);
-
-	icl_provisioning_device_set_owned(device);
-
-	if (container->cb)
-		container->cb(device, result, container->user_data);
-
-	icl_provisioning_device_unset_found(device);
-
-	return IOTCON_FUNC_CONTINUE;
 }
 
 
 static gboolean _provisioning_ownership_transfer_idle_cb(gpointer p)
 {
-	int ret;
 	struct icl_provisioning_ownership_transfer_cb_container *container = p;
 
-	ret = iotcon_provisioning_devices_foreach(container->devices,
-			_provisioning_ownership_transfer_foreach_cb, container);
-	if (IOTCON_ERROR_NONE != ret) {
-		ERR("iotcon_provisioning_devices_foreach() Fail(%d)", ret);
-		if (container->cb)
-			container->cb(NULL, ret, container->user_data);
-	}
+	icl_provisioning_device_set_owned(container->device);
+
+	if (container->cb)
+		container->cb(container->device, container->result, container->user_data);
 
 	_provisioning_ownership_transfer_cb_container_destroy(container);
 
@@ -713,77 +254,17 @@ static void _provisioning_ownership_transfer_cb(void *ctx, int n_of_res,
 {
 	FN_CALL;
 	struct icl_provisioning_ownership_transfer_cb_container *container;
-	OCProvisionResult_t *result_list;
+
+	RET_IF(NULL == ctx);
 
 	container = ctx;
-	container->count = n_of_res;
 
-	result_list = calloc(n_of_res + 1, sizeof(OCProvisionResult_t));
-	if (NULL == result_list) {
-		ERR("calloc() Fail(%d)", errno);
-		return;
-	}
-	memcpy(result_list, arr, n_of_res * sizeof(OCProvisionResult_t));
-
-	container->result_list = result_list;
-
-	if (true == has_error)
-		DBG("ownership transfer has error");
+	container->result = _provisioning_parse_oic_error(arr[0].res);
+	DBG("result : %d", container->result);
 
 	g_idle_add(_provisioning_ownership_transfer_idle_cb, container);
 
 	return;
-}
-
-
-API int iotcon_provisioning_register_unowned_devices(
-		iotcon_provisioning_devices_h devices,
-		iotcon_provisioning_ownership_transfer_cb cb,
-		void *user_data)
-{
-	FN_CALL;
-	int ret;
-	OCProvisionDev_t *dev_list;
-	struct icl_provisioning_ownership_transfer_cb_container *container;
-
-	RETV_IF(false == ic_utils_check_ocf_feature(), IOTCON_ERROR_NOT_SUPPORTED);
-	RETV_IF(NULL == devices, IOTCON_ERROR_INVALID_PARAMETER);
-	RETV_IF(NULL == cb, IOTCON_ERROR_INVALID_PARAMETER);
-
-	container = calloc(1, sizeof(struct icl_provisioning_ownership_transfer_cb_container));
-	if (NULL == container) {
-		ERR("calloc() Fail(%d)", errno);
-		return IOTCON_ERROR_OUT_OF_MEMORY;
-	}
-
-	ret = iotcon_provisioning_devices_clone(devices, &container->devices);
-	if (IOTCON_ERROR_NONE != ret) {
-		ERR("iotcon_provisioning_devices_clone() Fail(%d)", ret);
-		_provisioning_ownership_transfer_cb_container_destroy(container);
-		return ret;
-	}
-
-	container->cb = cb;
-	container->user_data = user_data;
-
-	dev_list = icl_provisioning_devices_get_devices(container->devices);
-
-	ret = icl_ioty_mutex_lock();
-	if (IOTCON_ERROR_NONE != ret) {
-		ERR("icl_ioty_mutex_lock() Fail(%d)", ret);
-		_provisioning_ownership_transfer_cb_container_destroy(container);
-		return ret;
-	}
-
-	ret = OCDoOwnershipTransfer(container, dev_list, _provisioning_ownership_transfer_cb);
-	icl_ioty_mutex_unlock();
-	if (OC_STACK_OK != ret) {
-		ERR("OCDoOwnershipTransfer() Fail(%d)", ret);
-		_provisioning_ownership_transfer_cb_container_destroy(container);
-		return _provisioning_parse_oic_error(ret);
-	}
-
-	return IOTCON_ERROR_NONE;
 }
 
 
@@ -794,12 +275,17 @@ API int iotcon_provisioning_register_unowned_device(
 {
 	FN_CALL;
 	int ret;
-	OCProvisionDev_t *dev_list, *cloned_list;
+	OCProvisionDev_t *dev_list;
 	struct icl_provisioning_ownership_transfer_cb_container *container;
 
 	RETV_IF(false == ic_utils_check_ocf_feature(), IOTCON_ERROR_NOT_SUPPORTED);
 	RETV_IF(NULL == device, IOTCON_ERROR_INVALID_PARAMETER);
 	RETV_IF(NULL == cb, IOTCON_ERROR_INVALID_PARAMETER);
+
+	if (true == icl_provisioning_device_is_found(device)) {
+		ERR("The device should be cloned");
+		return IOTCON_ERROR_INVALID_PARAMETER;
+	}
 
 	container = calloc(1, sizeof(struct icl_provisioning_ownership_transfer_cb_container));
 	if (NULL == container) {
@@ -810,14 +296,9 @@ API int iotcon_provisioning_register_unowned_device(
 	container->cb = cb;
 	container->user_data = user_data;
 
-	dev_list = icl_provisioning_device_get_device(device);
-	cloned_list = icl_provisioning_devices_clone(dev_list);
+	container->device = icl_provisioning_device_ref(device);
 
-	ret = icl_provisioning_devices_create(cloned_list, &container->devices);
-	if (IOTCON_ERROR_NONE != ret) {
-		ERR("icl_provisioning_devices_create() Fail(%d)", ret);
-		return ret;
-	}
+	dev_list = icl_provisioning_device_get_device(device);
 
 	ret = icl_ioty_mutex_lock();
 	if (IOTCON_ERROR_NONE != ret) {
@@ -826,7 +307,7 @@ API int iotcon_provisioning_register_unowned_device(
 		return ret;
 	}
 
-	ret = OCDoOwnershipTransfer(container, cloned_list, _provisioning_ownership_transfer_cb);
+	ret = OCDoOwnershipTransfer(container, dev_list, _provisioning_ownership_transfer_cb);
 	icl_ioty_mutex_unlock();
 	if (OC_STACK_OK != ret) {
 		ERR("OCDoOwnershipTransfer() Fail(%d)", ret);
@@ -907,6 +388,16 @@ API int iotcon_provisioning_provision_cred(iotcon_provisioning_device_h device1,
 	RETV_IF(NULL == device2, IOTCON_ERROR_INVALID_PARAMETER);
 	RETV_IF(NULL == cb, IOTCON_ERROR_INVALID_PARAMETER);
 
+	if (true == icl_provisioning_device_is_found(device1)) {
+		ERR("The device should be cloned(device1)");
+		return IOTCON_ERROR_INVALID_PARAMETER;
+	}
+
+	if (true == icl_provisioning_device_is_found(device2)) {
+		ERR("The device should be cloned(device2)");
+		return IOTCON_ERROR_INVALID_PARAMETER;
+	}
+
 	key_size = OWNER_PSK_LENGTH_256; /* or OWNER_PSK_LENGTH_128 */
 
 	container = calloc(1, sizeof(struct icl_provisioning_provision_cred_cb_container));
@@ -915,18 +406,8 @@ API int iotcon_provisioning_provision_cred(iotcon_provisioning_device_h device1,
 		return IOTCON_ERROR_OUT_OF_MEMORY;
 	}
 
-	ret = iotcon_provisioning_device_clone(device1, &container->device1);
-	if (IOTCON_ERROR_NONE != ret) {
-		ERR("iotcon_provisioning_device_clone() Fail(%d)", ret);
-		_provisioning_provision_cred_cb_container_destroy(container);
-		return ret;
-	}
-	ret = iotcon_provisioning_device_clone(device2, &container->device2);
-	if (IOTCON_ERROR_NONE != ret) {
-		ERR("iotcon_provisioning_device_clone() Fail(%d)", ret);
-		_provisioning_provision_cred_cb_container_destroy(container);
-		return ret;
-	}
+	container->device1 = icl_provisioning_device_ref(device1);
+	container->device2 = icl_provisioning_device_ref(device2);
 	container->cb = cb;
 	container->user_data = user_data;
 
@@ -965,24 +446,6 @@ static void _provisioning_provision_acl_cb_container_destroy(
 	}
 
 	free(container);
-}
-
-
-
-static char* _provisioning_parse_uuid(OicUuid_t *uuid)
-{
-	char uuid_string[256] = {0};
-
-	snprintf(uuid_string, sizeof(uuid_string),
-			"%02x%02x%02x%02x-%02x%02x-%02x%02x-%02x%02x-%02x%02x%02x%02x%02x%02x",
-			(*uuid).id[0], (*uuid).id[1], (*uuid).id[2], (*uuid).id[3],
-			(*uuid).id[4], (*uuid).id[5], (*uuid).id[6], (*uuid).id[7],
-			(*uuid).id[8], (*uuid).id[9], (*uuid).id[10], (*uuid).id[11],
-			(*uuid).id[12], (*uuid).id[13], (*uuid).id[14], (*uuid).id[15]);
-
-	DBG("uuid : %s", uuid_string);
-
-	return strdup(uuid_string);
 }
 
 
@@ -1033,7 +496,7 @@ static OicSecAcl_t* _provisioning_convert_acl(iotcon_provisioning_device_h devic
 
 	memcpy(&ace->subjectuuid, &subject->doxm->deviceID, 128/8);
 
-	_provisioning_parse_uuid(&ace->subjectuuid);
+	icl_provisioning_print_uuid(&ace->subjectuuid);
 
 	num_of_resources = icl_provisioning_acl_get_resource_count(acl);
 
@@ -1066,7 +529,7 @@ static OicSecAcl_t* _provisioning_convert_acl(iotcon_provisioning_device_h devic
 
 	memcpy(&oic_acl->rownerID, &oic_device->doxm->deviceID, sizeof(OicUuid_t));
 
-	_provisioning_parse_uuid(&oic_acl->rownerID);
+	icl_provisioning_print_uuid(&oic_acl->rownerID);
 
 	return oic_acl;
 }
@@ -1129,19 +592,8 @@ API int iotcon_provisioning_provision_acl(iotcon_provisioning_device_h device,
 		return IOTCON_ERROR_OUT_OF_MEMORY;
 	}
 
-	ret = iotcon_provisioning_device_clone(device, &container->device);
-	if (IOTCON_ERROR_NONE != ret) {
-		ERR("iotcon_provisioning_device_clone() Fail(%d)", ret);
-		_provisioning_provision_acl_cb_container_destroy(container);
-		return ret;
-	}
-
-	ret = icl_provisioning_acl_clone(acl, &container->acl);
-	if (IOTCON_ERROR_NONE != ret) {
-		ERR("icl_provisioning_acl_clone() Fail(%d)", ret);
-		_provisioning_provision_acl_cb_container_destroy(container);
-		return ret;
-	}
+	container->device = icl_provisioning_device_ref(device);
+	container->acl = icl_provisioning_acl_ref(acl);
 
 	container->cb = cb;
 	container->user_data = user_data;
@@ -1260,40 +712,19 @@ API int iotcon_provisioning_pairwise_devices(iotcon_provisioning_device_h device
 		return IOTCON_ERROR_OUT_OF_MEMORY;
 	}
 
-	ret = iotcon_provisioning_device_clone(device1, &container->device1);
-	if (IOTCON_ERROR_NONE != ret) {
-		ERR("iotcon_provisioning_device_clone() Fail(%d)", ret);
-		_provisioning_pairwise_devices_cb_container_destroy(container);
-		return ret;
-	}
+	container->device1 = icl_provisioning_device_ref(device1);
 
 	if (acl1) {
-		ret = icl_provisioning_acl_clone(acl1, &container->acl1);
-		if (IOTCON_ERROR_NONE != ret) {
-			ERR("icl_provisioning_acl_clone() Fail(%d)", ret);
-			_provisioning_pairwise_devices_cb_container_destroy(container);
-			return ret;
-		}
+		container->acl1 = icl_provisioning_acl_ref(acl1);
 		oic_acl1 = _provisioning_convert_acl(container->device1, container->acl1);
 	}
 
-	ret = iotcon_provisioning_device_clone(device2, &container->device2);
-	if (IOTCON_ERROR_NONE != ret) {
-		ERR("iotcon_provisioning_device_clone() Fail(%d)", ret);
-		_provisioning_pairwise_devices_cb_container_destroy(container);
-		return ret;
-	}
+	container->device2 = icl_provisioning_device_ref(device2);
 
 	if (acl2) {
-		ret = icl_provisioning_acl_clone(acl2, &container->acl2);
-		if (IOTCON_ERROR_NONE != ret) {
-			ERR("icl_provisioning_acl_clone() Fail(%d)", ret);
-			_provisioning_pairwise_devices_cb_container_destroy(container);
-			return ret;
-		}
+		container->acl2 = icl_provisioning_acl_ref(acl2);
 		oic_acl2 = _provisioning_convert_acl(container->device2, container->acl2);
 	}
-
 
 	container->cb = cb;
 	container->user_data = user_data;
@@ -1395,19 +826,8 @@ API int iotcon_provisioning_unlink_pairwise(iotcon_provisioning_device_h device1
 		return IOTCON_ERROR_OUT_OF_MEMORY;
 	}
 
-	ret = iotcon_provisioning_device_clone(device1, &container->device1);
-	if (IOTCON_ERROR_NONE != ret) {
-		ERR("iotcon_provisioning_device_clone() Fail(%d)", ret);
-		_provisioning_unlink_pairwise_cb_container_destroy(container);
-		return ret;
-	}
-
-	ret = iotcon_provisioning_device_clone(device2, &container->device2);
-	if (IOTCON_ERROR_NONE != ret) {
-		ERR("iotcon_provisioning_device_clone() Fail(%d)", ret);
-		_provisioning_unlink_pairwise_cb_container_destroy(container);
-		return ret;
-	}
+	container->device1 = icl_provisioning_device_ref(device1);
+	container->device2 = icl_provisioning_device_ref(device2);
 
 	container->cb = cb;
 	container->user_data = user_data;
@@ -1428,120 +848,6 @@ API int iotcon_provisioning_unlink_pairwise(iotcon_provisioning_device_h device1
 		ERR("OCUnlinkDevices() Fail(%d)", ret);
 		_provisioning_unlink_pairwise_cb_container_destroy(container);
 		return _provisioning_parse_oic_error(ret);
-	}
-
-	return IOTCON_ERROR_NONE;
-}
-
-
-static void _provisioning_remove_cb_container_destroy(
-		struct icl_provisioning_remove_device_cb_container *container)
-{
-	if (container->device) {
-		iotcon_provisioning_device_destroy(container->device);
-		container->device = NULL;
-	}
-
-	free(container);
-}
-
-
-static gboolean _provisioning_remove_device_idle_cb(gpointer p)
-{
-	FN_CALL;
-	struct icl_provisioning_remove_device_cb_container *container = p;
-
-	if (container->cb)
-		container->cb(container->device, container->result, container->user_data);
-
-	_provisioning_remove_cb_container_destroy(container);
-
-	return G_SOURCE_REMOVE;
-}
-
-
-static void _provisioning_remove_device_cb(void *ctx, int n_of_res,
-		OCProvisionResult_t *arr, bool has_error)
-{
-	FN_CALL;
-	struct icl_provisioning_remove_device_cb_container *container = ctx;
-
-	container->result = IOTCON_ERROR_NONE;
-
-	if (true == has_error) {
-		DBG("remove device has error");
-		container->result = IOTCON_ERROR_IOTIVITY;
-	}
-
-	g_idle_add(_provisioning_remove_device_idle_cb, container);
-}
-
-
-static void* _provisioning_remove_device_thread(void *user_data)
-{
-	FN_CALL;
-	int ret;
-	struct icl_provisioning_remove_device_cb_container *container = user_data;
-
-	ret = icl_ioty_mutex_lock();
-	if (IOTCON_ERROR_NONE != ret) {
-		ERR("icl_ioty_mutex_lock() Fail(%d)", ret);
-		_provisioning_remove_cb_container_destroy(container);
-		return NULL;
-	}
-
-	ret = OCRemoveDevice(container,
-			container->timeout,
-			icl_provisioning_device_get_device(container->device),
-			_provisioning_remove_device_cb);
-	icl_ioty_mutex_unlock();
-	if (OC_STACK_OK != ret) {
-		ERR("OCRemoveDevice() Fail(%d)", ret);
-		_provisioning_remove_cb_container_destroy(container);
-		return NULL;
-	}
-
-	return NULL;
-}
-
-
-API int iotcon_provisioning_remove_device(int timeout,
-		iotcon_provisioning_device_h device,
-		iotcon_provisioning_remove_device_cb cb,
-		void *user_data)
-{
-	FN_CALL;
-	int ret;
-	struct icl_provisioning_remove_device_cb_container *container;
-
-	RETV_IF(false == ic_utils_check_ocf_feature(), IOTCON_ERROR_NOT_SUPPORTED);
-	RETV_IF(timeout < 0 || ICL_PROVISIONING_TIMEOUT_MAX < timeout,
-			IOTCON_ERROR_INVALID_PARAMETER);
-	RETV_IF(NULL == device, IOTCON_ERROR_INVALID_PARAMETER);
-	RETV_IF(NULL == cb, IOTCON_ERROR_INVALID_PARAMETER);
-
-	container = calloc(1, sizeof(struct icl_provisioning_remove_device_cb_container));
-	if (NULL == container) {
-		ERR("calloc() Fail(%d)", errno);
-		return IOTCON_ERROR_OUT_OF_MEMORY;
-	}
-
-	container->timeout = timeout;
-	container->cb = cb;
-	container->user_data = user_data;
-
-	ret = iotcon_provisioning_device_clone(device, &container->device);
-	if (IOTCON_ERROR_NONE != ret) {
-		ERR("iotcon_provisioning_device_clone() Fail(%d)", ret);
-		_provisioning_remove_cb_container_destroy(container);
-		return ret;
-	}
-
-	ret = _provisioning_thread(ICL_PROVISIONING_REMOVE_DEVICE, container);
-	if (IOTCON_ERROR_NONE != ret) {
-		ERR("_provisinoing_discover_thread() Fail(%d)", ret);
-		_provisioning_remove_cb_container_destroy(container);
-		return ret;
 	}
 
 	return IOTCON_ERROR_NONE;
