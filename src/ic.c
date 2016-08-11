@@ -23,6 +23,8 @@
 #define ICL_TIMEOUT_DEFAULT 30 /* 30 sec */
 #define ICL_TIMEOUT_MAX 60*60 /* 60 min */
 
+#define ICL_DEFAULT_DEVICE_NAME "UNKNOWN"
+
 static pthread_t icl_thread;
 static int icl_timeout_seconds = ICL_TIMEOUT_DEFAULT;
 static int icl_init_count;
@@ -58,6 +60,14 @@ int icl_initialize(const char *file_path, bool is_pt)
 		ret = icl_ioty_set_platform_info();
 		if (IOTCON_ERROR_NONE != ret) {
 			ERR("icl_ioty_set_platform_info() Fail(%d)", ret);
+			icl_ioty_deinit(icl_thread);
+			ic_utils_mutex_unlock(IC_UTILS_MUTEX_INIT);
+			return ret;
+		}
+
+		ret = icl_ioty_set_device_info(ICL_DEFAULT_DEVICE_NAME);
+		if (IOTCON_ERROR_NONE != ret) {
+			ERR("icl_ioty_set_device_info() Fail(%d)", ret);
 			icl_ioty_deinit(icl_thread);
 			ic_utils_mutex_unlock(IC_UTILS_MUTEX_INIT);
 			return ret;
