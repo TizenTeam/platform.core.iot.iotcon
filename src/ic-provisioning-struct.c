@@ -520,7 +520,7 @@ void icl_provisioning_device_print(iotcon_provisioning_device_h device)
 	INFO("host address : %s", device->host_address);
 	INFO("device ID : %s", device->device_id);
 
-	if (device->device && device->device->secVer)
+	if (device->device)
 		INFO("security version : %s", device->device->secVer);
 }
 
