@@ -177,7 +177,7 @@ static OCStackApplicationResult _provisioning_remove_device_delete_cb(void *ctx,
 {
 	int ret;
 	OicUuid_t *uuid;
-	OicUuid_t device_id = {{0}};
+	OicUuid_t device_id = { {0} };
 	icl_provisioning_remove_delete_container_s *container = ctx;
 
 	RETV_IF(NULL == container, OC_STACK_DELETE_TRANSACTION);

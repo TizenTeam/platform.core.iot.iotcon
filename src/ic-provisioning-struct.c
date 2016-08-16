@@ -142,7 +142,7 @@ int icl_provisioning_parse_oic_dev_address(OCDevAddr *dev_addr, int secure_port,
 	char temp[PATH_MAX] = {0};
 
 	RETV_IF(NULL == dev_addr, IOTCON_ERROR_INVALID_PARAMETER);
-	RETV_IF(NULL == host_address ,IOTCON_ERROR_INVALID_PARAMETER);
+	RETV_IF(NULL == host_address, IOTCON_ERROR_INVALID_PARAMETER);
 
 	if (0 == secure_port)
 		port = dev_addr->port;
