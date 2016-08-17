@@ -182,7 +182,7 @@ static void _on_response_post(iotcon_remote_resource_h resource,
 	}
 
 	ret = iotcon_remote_resource_create(host, connectivity_type, created_uri_path,
-			IOTCON_RESOURCE_NO_POLICY, types, ifaces, &new_door_resource);
+			IOTCON_RESOURCE_SECURE, types, ifaces, &new_door_resource);
 	if (IOTCON_ERROR_NONE != ret) {
 		ERR("iotcon_remote_resource_create() Fail(%d)", ret);
 		return;
