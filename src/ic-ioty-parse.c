@@ -124,6 +124,7 @@ iotcon_response_result_e  ic_ioty_parse_oic_response_result(OCStackResult result
 {
 	switch (result) {
 	case OC_STACK_OK:
+	case OC_STACK_RESOURCE_CHANGED:
 		return IOTCON_RESPONSE_OK;
 	case OC_STACK_RESOURCE_CREATED:
 		return IOTCON_RESPONSE_RESOURCE_CREATED;
