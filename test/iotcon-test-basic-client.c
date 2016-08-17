@@ -131,8 +131,7 @@ static void _on_response_post(iotcon_remote_resource_h resource,
 		return;
 	}
 
-	if (IOTCON_RESPONSE_OK != response_result
-			&& IOTCON_RESPONSE_RESOURCE_CREATED != response_result) {
+	if (IOTCON_RESPONSE_RESOURCE_CREATED != response_result) {
 		ERR("_on_response_post Response error(%d)", response_result);
 		return;
 	}
@@ -209,7 +208,7 @@ static void _on_response_put(iotcon_remote_resource_h resource,
 		return;
 	}
 
-	if (IOTCON_RESPONSE_OK != response_result) {
+	if (IOTCON_RESPONSE_RESOURCE_CHANGED != response_result) {
 		ERR("_on_response_put Response error(%d)", response_result);
 		return;
 	}

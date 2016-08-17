@@ -156,6 +156,7 @@ typedef enum {
 	IOTCON_RESPONSE_ERROR, /**< Indicates result of response for something error */
 	IOTCON_RESPONSE_RESOURCE_CREATED, /**< Indicates result of response for resource has created */
 	IOTCON_RESPONSE_RESOURCE_DELETED, /**< Indicates result of response for resource has deleted */
+	IOTCON_RESPONSE_RESOURCE_CHANGED, /**< Indicates result of response for resource has changed */
 	IOTCON_RESPONSE_SLOW, /**< Indicates result of response for slow resource */
 	IOTCON_RESPONSE_FORBIDDEN, /**< Indicates result of response for accessing unauthorized resource */
 } iotcon_response_result_e;
