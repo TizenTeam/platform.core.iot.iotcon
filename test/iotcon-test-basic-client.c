@@ -30,7 +30,7 @@ static void _on_response(iotcon_remote_resource_h resource, iotcon_error_e err,
 		iotcon_request_type_e request_type, iotcon_response_h response, void *user_data);
 
 static void _on_observe(iotcon_remote_resource_h resource, iotcon_error_e err,
-		int sequece_number, iotcon_response_h response, void *user_data)
+		int sequence_number, iotcon_response_h response, void *user_data)
 {
 	int ret;
 	bool opened;

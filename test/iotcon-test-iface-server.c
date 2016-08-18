@@ -411,7 +411,7 @@ static iotcon_representation_h _get_fan_representation(fan_resource_s *fan)
 		return NULL;
 	}
 
-	ret = iotcon_attributes_add_bool(attributes, "attributes", fan->state);
+	ret = iotcon_attributes_add_bool(attributes, "state", fan->state);
 	if (IOTCON_ERROR_NONE != ret) {
 		ERR("iotcon_attributes_add_bool() Fail(%d)", ret);
 		iotcon_attributes_destroy(attributes);
