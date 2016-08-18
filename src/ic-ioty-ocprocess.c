@@ -462,9 +462,6 @@ OCStackApplicationResult icl_ioty_ocprocess_observe_cb(void *ctx,
 		return OC_STACK_KEEP_TRANSACTION;
 	}
 
-	cb_result = (OC_OBSERVE_DEREGISTER == resp->sequenceNumber) ?
-		OC_STACK_DELETE_TRANSACTION : OC_STACK_KEEP_TRANSACTION;
-
 	if (NULL == resp->payload) {
 		ERR("payload is empty(%d)", resp->result);
 		return OC_STACK_KEEP_TRANSACTION;
