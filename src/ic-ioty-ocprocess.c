@@ -452,7 +452,6 @@ OCStackApplicationResult icl_ioty_ocprocess_observe_cb(void *ctx,
 	iotcon_representation_h repr;
 	icl_observe_cb_s *observe_cb_data;
 	icl_observe_container_s *cb_container = ctx;
-	OCStackApplicationResult cb_result;
 
 	RETV_IF(NULL == ctx, OC_STACK_KEEP_TRANSACTION);
 	RETV_IF(NULL == resp, OC_STACK_KEEP_TRANSACTION);
@@ -514,7 +513,7 @@ OCStackApplicationResult icl_ioty_ocprocess_observe_cb(void *ctx,
 	/* DO NOT FREE ctx(cb_container). It MUST be freed in the ocstack */
 	/* DO NOT FREE cb_data. It MUST be freed in the idle */
 
-	return cb_result;
+	return OC_STACK_KEEP_TRANSACTION;
 }
 
 static gboolean _icl_ioty_ocprocess_crud_idle_cb(gpointer p)
