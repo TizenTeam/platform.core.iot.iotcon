@@ -32,27 +32,15 @@
 #undef WARN
 #undef ERR
 
-#define TIZEN_DEBUG_ENABLE
 #define LOG_TAG "IOTCON"
 #include <dlog.h>
 
-#ifdef IC_DAEMON
-
-#define _DBG(fmt, arg...) SLOGD(IC_LOG_GREEN "<Daemon>" IC_LOG_END fmt, ##arg)
-#define _INFO(fmt, arg...) SLOGI(IC_LOG_GREEN "<Daemon>" IC_LOG_END fmt, ##arg)
-#define _WARN(fmt, arg...) SLOGW(IC_LOG_GREEN "<Daemon>" IC_LOG_END fmt, ##arg)
-#define _ERR(fmt, arg...) SLOGE(IC_LOG_GREEN "<Daemon>" IC_LOG_END fmt, ##arg)
-
-#else /* IC_DAEMON */
-
+#if 1
 #define _DBG(fmt, arg...) SLOGD(fmt, ##arg)
 #define _INFO(fmt, arg...) SLOGI(fmt, ##arg)
 #define _WARN(fmt, arg...) SLOGW(fmt, ##arg)
 #define _ERR(fmt, arg...) SLOGE(fmt, ##arg)
-
-#endif /* IC_DAEMON */
-
-#if 0
+#else
 #define _DBG(fmt, arg...) \
 	printf("[IoTCon]%s(%d):" fmt "\n", __FUNCTION__, __LINE__, ##arg)
 #define _INFO(fmt, arg...) \
@@ -75,12 +63,6 @@
 #define INFO(fmt, arg...) _INFO(IC_LOG_BLUE fmt IC_LOG_END, ##arg)
 #define SECURE_DBG(fmt, arg...) SECURE_SLOGD(fmt, ##arg)
 #define SECURE_ERR(fmt, arg...) SECURE_SLOGE(fmt, ##arg)
-
-#if __WORDSIZE == 64
-#define DBG_HANDLE(handle) _DBG("handle : %lld", #handle)
-#else
-#define DBG_HANDLE(handle) _DBG("handle : %d", #handle)
-#endif
 
 #else /* IC_DEBUGGING */
 
