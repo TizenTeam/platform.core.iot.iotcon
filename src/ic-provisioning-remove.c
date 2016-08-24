@@ -260,7 +260,7 @@ static int _provisioning_remove_device_delete(
 		return ret;
 	}
 
-	snprintf(uri, sizeof(uri), "%s%s%s?%s=%s", IC_IOTY_COAPS, host_address, cred_uri,
+	snprintf(uri, sizeof(uri), "%s%s%s?%s=%s", IC_COAPS, host_address, cred_uri,
 			subject_uuid, container->cb_data->device_id);
 
 	free(host_address);

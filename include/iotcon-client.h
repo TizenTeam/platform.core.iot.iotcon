@@ -348,7 +348,7 @@ typedef bool (*iotcon_found_resource_cb)(iotcon_remote_resource_h resource,
 
 /**
  * @brief Finds resources, asynchronously.
- * @details Request to find a resource of @a host_address server with @a resource_type.\n
+ * @details Request to find a resource of @a host_address server with @a query.\n
  * @a host_address could be #IOTCON_MULTICAST_ADDRESS for multicast.\n
  * If succeed to find the resource, iotcon_found_resource_cb() will be invoked with
  * information of the resource.
@@ -357,14 +357,12 @@ typedef bool (*iotcon_found_resource_cb)(iotcon_remote_resource_h resource,
  * @privlevel public
  * @privilege %http://tizen.org/privilege/internet
  *
- * @remarks The length of @a resource_type should be less than or equal to 61.\n
- * The @a resource_type must start with a lowercase alphabetic character, followed by a sequence
- * of lowercase alphabetic, numeric, ".", or "-" characters, and contains no white space.
+ * @remarks @a host_address should be in the format coap://address:port.\n
+ * (ex. coaps://[fe80::ae5a:14ff:fe24:b8fe]:12345, or coaps://192.168.1.10:12345)
  *
  * @param[in] host_address The address or addressable name of server
  * @param[in] connectivity_type The connectivity type
- * @param[in] resource_type The resource type specified as a filter for the resource
- * @param[in] is_secure The flag for secure communication with the server
+ * @param[in] query The query specified as a filter for the resource
  * @param[in] cb The callback function to invoke
  * @param[in] user_data The user data to pass to the function
  *
@@ -383,8 +381,7 @@ typedef bool (*iotcon_found_resource_cb)(iotcon_remote_resource_h resource,
  */
 int iotcon_find_resource(const char *host_address,
 		iotcon_connectivity_type_e connectivity_type,
-		const char *resource_type,
-		bool is_secure,
+		iotcon_query_h query,
 		iotcon_found_resource_cb cb,
 		void *user_data);
 
@@ -421,8 +418,12 @@ typedef bool (*iotcon_device_info_cb)(iotcon_device_info_h device_info,
  * @privlevel public
  * @privilege %http://tizen.org/privilege/internet
  *
+ * @remarks @a host_address should be in the format coap://address:port.\n
+ * (ex. coap://[fe80::ae5a:14ff:fe24:b8fe]:12345, or coap://192.168.1.10:12345)
+ *
  * @param[in] host_address The host address of remote server
  * @param[in] connectivity_type The connectivity type
+ * @param[in] query The query specified as a filter for the device information
  * @param[in] cb The callback function to invoke
  * @param[in] user_data The user data to pass to the function
  *
@@ -443,6 +444,7 @@ typedef bool (*iotcon_device_info_cb)(iotcon_device_info_h device_info,
  */
 int iotcon_find_device_info(const char *host_address,
 		iotcon_connectivity_type_e connectivity_type,
+		iotcon_query_h query,
 		iotcon_device_info_cb cb,
 		void *user_data);
 
@@ -502,8 +504,12 @@ typedef bool (*iotcon_platform_info_cb)(iotcon_platform_info_h platform_info,
  * @privlevel public
  * @privilege %http://tizen.org/privilege/internet
  *
+ * @remarks @a host_address should be in the format coap://address:port.\n
+ * (ex. coap://[fe80::ae5a:14ff:fe24:b8fe]:12345, or coap://192.168.1.10:12345)
+ *
  * @param[in] host_address The host address of remote server
  * @param[in] connectivity_type The connectivity type
+ * @param[in] query The query specified as a filter for the platform information
  * @param[in] cb The callback function to invoke
  * @param[in] user_data The user data to pass to the function
  *
@@ -525,6 +531,7 @@ typedef bool (*iotcon_platform_info_cb)(iotcon_platform_info_h platform_info,
  */
 int iotcon_find_platform_info(const char *host_address,
 		iotcon_connectivity_type_e connectivity_type,
+		iotcon_query_h query,
 		iotcon_platform_info_cb cb,
 		void *user_data);
 

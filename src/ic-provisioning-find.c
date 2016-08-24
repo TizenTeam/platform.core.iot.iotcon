@@ -415,7 +415,7 @@ static int _provisioning_find_security_version(
 		return ret;
 	}
 
-	snprintf(uri, sizeof(uri), "%s%s%s", IC_IOTY_COAP, host_address, version_uri);
+	snprintf(uri, sizeof(uri), "%s%s%s", IC_COAP, host_address, version_uri);
 	DBG("uri : %s", uri);
 
 	cbdata.cb = _provisioning_find_security_version_cb;
@@ -522,7 +522,7 @@ static int _provisioning_find_secure_port(icl_provisioning_find_cb_container_s *
 		return ret;
 	}
 
-	snprintf(uri, sizeof(uri), "%s%s%s", IC_IOTY_COAP, host_address,
+	snprintf(uri, sizeof(uri), "%s%s%s", IC_COAP, host_address,
 			OC_RSRVD_WELL_KNOWN_URI);
 
 	cbdata.cb = _provisioning_find_secure_port_cb;

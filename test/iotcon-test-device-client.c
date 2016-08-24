@@ -187,7 +187,7 @@ int main(int argc, char **argv)
 	}
 
 	ret = iotcon_find_device_info(IOTCON_MULTICAST_ADDRESS, IOTCON_CONNECTIVITY_ALL,
-			_request_device_info, NULL);
+			NULL, _request_device_info, NULL);
 	if (IOTCON_ERROR_NONE != ret) {
 		ERR("iotcon_find_device_info() Fail(%d)", ret);
 		iotcon_deinitialize();
@@ -195,7 +195,7 @@ int main(int argc, char **argv)
 	}
 
 	ret = iotcon_find_platform_info(IOTCON_MULTICAST_ADDRESS, IOTCON_CONNECTIVITY_ALL,
-			_request_platform_info, NULL);
+			NULL, _request_platform_info, NULL);
 	if (IOTCON_ERROR_NONE != ret) {
 		ERR("iotcon_find_platform_info() Fail(%d)", ret);
 		iotcon_deinitialize();

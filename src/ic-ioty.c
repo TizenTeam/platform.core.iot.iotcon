@@ -276,16 +276,58 @@ static void _icl_ioty_free_cb_data(void *data)
 	g_idle_add(_icl_ioty_free_cb_data_idle_cb, cb_info);
 }
 
+static char* _icl_ioty_resource_generate_uri(const char *uri_path, iotcon_query_h query)
+{
+	int len;
+	bool loop_first = true;
+	char uri_buf[PATH_MAX] = {0};
+	GHashTableIter iter;
+	gpointer key, value;
+
+	RETV_IF(NULL == uri_path, NULL);
+
+	if (NULL == query || NULL == query->hash)
+		return strdup(uri_path);
+
+	len = snprintf(uri_buf, sizeof(uri_buf), "%s", uri_path);
+
+	/* remove suffix '/' */
+	if ('/' == uri_buf[strlen(uri_buf) - 1]) {
+		uri_buf[strlen(uri_buf) - 1] = '\0';
+		len--;
+	}
+
+	if (query->hash) {
+		g_hash_table_iter_init(&iter, query->hash);
+		while (g_hash_table_iter_next(&iter, &key, &value)) {
+			int query_len;
+			DBG("query exist. key(%s), value(%s)", key, value);
+
+			if (true == loop_first) {
+				query_len = snprintf(uri_buf + len, sizeof(uri_buf) - len, "?%s=%s",
+						(char *)key, (char *)value);
+				loop_first = false;
+			} else {
+				query_len = snprintf(uri_buf + len, sizeof(uri_buf) - len, ";%s=%s",
+						(char *)key, (char *)value);
+			}
+			len += query_len;
+		}
+	}
+
+	return strdup(uri_buf);
+}
+
 int icl_ioty_find_resource(const char *host_address,
 		iotcon_connectivity_type_e connectivity_type,
-		const char *resource_type,
-		bool is_secure,
+		iotcon_query_h query,
 		iotcon_found_resource_cb cb,
 		void *user_data)
 {
 	FN_CALL;
-	int ret, len, timeout;
+	int ret, timeout;
 	char *coap_str;
+	char *full_uri;
 	char uri[PATH_MAX] = {0};
 	icl_cb_s *cb_data;
 	OCDoHandle handle;
@@ -294,25 +336,28 @@ int icl_ioty_find_resource(const char *host_address,
 
 	RETV_IF(NULL == cb, IOTCON_ERROR_INVALID_PARAMETER);
 
-	coap_str = is_secure ? IC_IOTY_COAPS : IC_IOTY_COAP;
+	if (IC_EQUAL != strncmp(IC_COAP_PREFIX, host_address, strlen(IC_COAP_PREFIX)))
+		coap_str = IC_COAPS;
 
 	if (NULL == host_address) {
-		len = snprintf(uri, sizeof(uri), "%s", OC_RSRVD_WELL_KNOWN_URI);
+		snprintf(uri, sizeof(uri), "%s", OC_RSRVD_WELL_KNOWN_URI);
+	} else if (NULL == coap_str) {
+		snprintf(uri, sizeof(uri), "%s%s", host_address, OC_RSRVD_WELL_KNOWN_URI);
 	} else {
-		len = snprintf(uri, sizeof(uri), "%s%s%s", coap_str, host_address,
+		snprintf(uri, sizeof(uri), "%s%s%s", coap_str, host_address,
 				OC_RSRVD_WELL_KNOWN_URI);
 	}
-	if (len <= 0 || sizeof(uri) <= len) {
-		ERR("snprintf() Fail(%d)", len);
-		return IOTCON_ERROR_IO_ERROR;
-	}
 
-	if (resource_type)
-		snprintf(uri + len, sizeof(uri) - len, "?rt=%s", resource_type);
+	full_uri = _icl_ioty_resource_generate_uri(uri, query);
+	if (NULL == full_uri) {
+		ERR("_icl_ioty_resource_generate_uri() Fail");
+		return IOTCON_ERROR_INVALID_PARAMETER;
+	}
 
 	cb_data = calloc(1, sizeof(icl_cb_s));
 	if (NULL == cb_data) {
 		ERR("calloc() Fail(%d)", errno);
+		free(full_uri);
 		return IOTCON_ERROR_OUT_OF_MEMORY;
 	}
 	cb_data->op = ICL_FIND_RESOURCE;
@@ -329,21 +374,24 @@ int icl_ioty_find_resource(const char *host_address,
 	if (IOTCON_ERROR_NONE != ret) {
 		ERR("icl_ioty_mutex_lock() Fail(%d)", ret);
 		_icl_ioty_free_cb_data(cb_data);
+		free(full_uri);
 		return ret;
 	}
 
 	// TODO: QoS is come from lib.
-	ret = OCDoResource(&handle, OC_REST_DISCOVER, uri, NULL, NULL, oic_conn_type,
+	ret = OCDoResource(&handle, OC_REST_DISCOVER, full_uri, NULL, NULL, oic_conn_type,
 			OC_LOW_QOS, &cbdata, NULL, 0);
 	icl_ioty_mutex_unlock();
-	cb_data->handle = handle;
 
 	if (OC_STACK_OK != ret) {
 		ERR("OCDoResource(DISCOVER) Fail(%d)", ret);
 		_icl_ioty_free_cb_data(cb_data);
+		free(full_uri);
 		return ic_ioty_parse_oic_error(ret);
 	}
+	free(full_uri);
 
+	cb_data->handle = handle;
 	iotcon_get_timeout(&timeout);
 	cb_data->timeout = g_timeout_add_seconds(timeout, _icl_ioty_timeout, cb_data);
 
@@ -352,10 +400,13 @@ int icl_ioty_find_resource(const char *host_address,
 
 int icl_ioty_find_device_info(const char *host_address,
 		iotcon_connectivity_type_e connectivity_type,
+		iotcon_query_h query,
 		iotcon_device_info_cb cb,
 		void *user_data)
 {
 	int ret, timeout;
+	char *coap_str;
+	char *full_uri;
 	char uri[PATH_MAX] = {0};
 	icl_cb_s *cb_data = NULL;
 	OCDoHandle handle;
@@ -364,14 +415,26 @@ int icl_ioty_find_device_info(const char *host_address,
 
 	RETV_IF(NULL == cb, IOTCON_ERROR_INVALID_PARAMETER);
 
+	if (IC_EQUAL != strncmp(IC_COAP_PREFIX, host_address, strlen(IC_COAP_PREFIX)))
+		coap_str = IC_COAP;
+
 	if (NULL == host_address)
 		snprintf(uri, sizeof(uri), "%s", OC_RSRVD_DEVICE_URI);
-	else
+	else if (NULL == coap_str)
 		snprintf(uri, sizeof(uri), "%s%s", host_address, OC_RSRVD_DEVICE_URI);
+	else
+		snprintf(uri, sizeof(uri), "%s%s%s", coap_str, host_address, OC_RSRVD_DEVICE_URI);
+
+	full_uri = _icl_ioty_resource_generate_uri(uri, query);
+	if (NULL == full_uri) {
+		ERR("_icl_ioty_resource_generate_uri() Fail");
+		return IOTCON_ERROR_INVALID_PARAMETER;
+	}
 
 	cb_data = calloc(1, sizeof(icl_cb_s));
 	if (NULL == cb_data) {
 		ERR("calloc() Fail(%d)", errno);
+		free(full_uri);
 		return IOTCON_ERROR_OUT_OF_MEMORY;
 	}
 	cb_data->cb = cb;
@@ -388,20 +451,22 @@ int icl_ioty_find_device_info(const char *host_address,
 	if (IOTCON_ERROR_NONE != ret) {
 		ERR("icl_ioty_mutex_lock() Fail(%d)", ret);
 		_icl_ioty_free_cb_data(cb_data);
+		free(full_uri);
 		return ret;
 	}
 	// TODO: QoS is come from lib. And user can set QoS to client structure.
-	ret = OCDoResource(&handle, OC_REST_DISCOVER, uri, NULL, NULL, oic_conn_type,
+	ret = OCDoResource(&handle, OC_REST_DISCOVER, full_uri, NULL, NULL, oic_conn_type,
 			OC_LOW_QOS, &cbdata, NULL, 0);
 	icl_ioty_mutex_unlock();
-	cb_data->handle = handle;
 
 	if (OC_STACK_OK != ret) {
 		ERR("OCDoResource(DISCOVER) Fail(%d)", ret);
 		_icl_ioty_free_cb_data(cb_data);
+		free(full_uri);
 		return ic_ioty_parse_oic_error(ret);
 	}
 
+	cb_data->handle = handle;
 	iotcon_get_timeout(&timeout);
 	cb_data->timeout = g_timeout_add_seconds(timeout, _icl_ioty_timeout, cb_data);
 
@@ -410,10 +475,13 @@ int icl_ioty_find_device_info(const char *host_address,
 
 int icl_ioty_find_platform_info(const char *host_address,
 		iotcon_connectivity_type_e connectivity_type,
+		iotcon_query_h query,
 		iotcon_platform_info_cb cb,
 		void *user_data)
 {
 	int ret, timeout;
+	char *coap_str;
+	char *full_uri;
 	char uri[PATH_MAX] = {0};
 	icl_cb_s *cb_data = NULL;
 	OCDoHandle handle;
@@ -422,14 +490,26 @@ int icl_ioty_find_platform_info(const char *host_address,
 
 	RETV_IF(NULL == cb, IOTCON_ERROR_INVALID_PARAMETER);
 
+	if (IC_EQUAL != strncmp(IC_COAP_PREFIX, host_address, strlen(IC_COAP_PREFIX)))
+		coap_str = IC_COAP;
+
 	if (NULL == host_address)
 		snprintf(uri, sizeof(uri), "%s", OC_RSRVD_PLATFORM_URI);
-	else
+	else if (NULL == coap_str)
 		snprintf(uri, sizeof(uri), "%s%s", host_address, OC_RSRVD_PLATFORM_URI);
+	else
+		snprintf(uri, sizeof(uri), "%s%s%s", coap_str, host_address, OC_RSRVD_PLATFORM_URI);
+
+	full_uri = _icl_ioty_resource_generate_uri(uri, query);
+	if (NULL == full_uri) {
+		ERR("_icl_ioty_resource_generate_uri() Fail");
+		return IOTCON_ERROR_INVALID_PARAMETER;
+	}
 
 	cb_data = calloc(1, sizeof(icl_cb_s));
 	if (NULL == cb_data) {
 		ERR("calloc() Fail(%d)", errno);
+		free(full_uri);
 		return IOTCON_ERROR_OUT_OF_MEMORY;
 	}
 	cb_data->cb = cb;
@@ -446,20 +526,22 @@ int icl_ioty_find_platform_info(const char *host_address,
 	if (IOTCON_ERROR_NONE != ret) {
 		ERR("icl_ioty_mutex_lock() Fail(%d)", ret);
 		_icl_ioty_free_cb_data(cb_data);
+		free(full_uri);
 		return ret;
 	}
 	// TODO: QoS is come from lib. And user can set QoS to client structure.
-	ret = OCDoResource(&handle, OC_REST_DISCOVER, uri, NULL, NULL, oic_conn_type,
+	ret = OCDoResource(&handle, OC_REST_DISCOVER, full_uri, NULL, NULL, oic_conn_type,
 			OC_LOW_QOS, &cbdata, NULL, 0);
 	icl_ioty_mutex_unlock();
-	cb_data->handle = handle;
 
 	if (OC_STACK_OK != ret) {
 		ERR("OCDoResource(DISCOVER) Fail(%d)", ret);
 		_icl_ioty_free_cb_data(cb_data);
+		free(full_uri);
 		return ic_ioty_parse_oic_error(ret);
 	}
 
+	cb_data->handle = handle;
 	iotcon_get_timeout(&timeout);
 	cb_data->timeout = g_timeout_add_seconds(timeout, _icl_ioty_timeout, cb_data);
 
@@ -536,6 +618,7 @@ int icl_ioty_add_presence_cb(const char *host_address,
 		iotcon_presence_h *presence_handle)
 {
 	int ret;
+	int index = 0;
 	OCDoHandle handle;
 	const char *address;
 	char uri[PATH_MAX] = {0};
@@ -547,11 +630,16 @@ int icl_ioty_add_presence_cb(const char *host_address,
 	RETV_IF(NULL == presence_handle, IOTCON_ERROR_INVALID_PARAMETER);
 
 	if (NULL == host_address)
-		address = IC_IOTY_MULTICAST_ADDRESS;
+		address = IC_MULTICAST_ADDRESS;
 	else
 		address = host_address;
 
-	snprintf(uri, sizeof(uri), "%s%s", address, OC_RSRVD_PRESENCE_URI);
+	if (IC_EQUAL == strncmp(IC_COAPS, host_address, strlen(IC_COAPS)))
+		index = strlen(IC_COAPS);
+	else if (IC_EQUAL == strncmp(IC_COAP, host_address , strlen(IC_COAP)))
+		index = strlen(IC_COAP);
+
+	snprintf(uri, sizeof(uri), "%s%s", &address[index], OC_RSRVD_PRESENCE_URI);
 
 	presence = calloc(1, sizeof(struct icl_presence));
 	if (NULL == presence) {
@@ -618,45 +706,6 @@ int icl_ioty_remove_presence_cb(iotcon_presence_h presence)
 	return IOTCON_ERROR_NONE;
 }
 
-static char* _icl_ioty_resource_generate_uri(char *uri_path, GHashTable *hash)
-{
-	int len;
-	bool loop_first = true;
-	char uri_buf[PATH_MAX] = {0};
-	GHashTableIter iter;
-	gpointer key, value;
-
-	RETV_IF(NULL == uri_path, NULL);
-
-	len = snprintf(uri_buf, sizeof(uri_buf), "%s", uri_path);
-
-	/* remove suffix '/' */
-	if ('/' == uri_buf[strlen(uri_buf) - 1]) {
-		uri_buf[strlen(uri_buf) - 1] = '\0';
-		len--;
-	}
-
-	if (hash) {
-		g_hash_table_iter_init(&iter, hash);
-		while (g_hash_table_iter_next(&iter, &key, &value)) {
-			int query_len;
-			DBG("query exist. key(%s), value(%s)", key, value);
-
-			if (true == loop_first) {
-				query_len = snprintf(uri_buf + len, sizeof(uri_buf) - len, "?%s=%s",
-						(char *)key, (char *)value);
-				loop_first = false;
-			} else {
-				query_len = snprintf(uri_buf + len, sizeof(uri_buf) - len, ";%s=%s",
-						(char *)key, (char *)value);
-			}
-			len += query_len;
-		}
-	}
-
-	return strdup(uri_buf);
-}
-
 static void _icl_ioty_free_observe_container(void *data)
 {
 	icl_observe_container_s *cb_container = data;
@@ -684,17 +733,15 @@ static int _icl_ioty_remote_resource_observe(iotcon_remote_resource_h resource,
 	OCConnectivityType oic_conn_type;
 	OCHeaderOption *oic_options_ptr = NULL;
 	OCHeaderOption oic_options[MAX_HEADER_OPTIONS];
-	GHashTable *query_hash;
 	icl_observe_container_s *cb_container;
 
 	RETV_IF(NULL == resource, IOTCON_ERROR_INVALID_PARAMETER);
 	RETV_IF(NULL == cb, IOTCON_ERROR_INVALID_PARAMETER);
 
 	/* uri */
-	query_hash = (query && query->hash) ? query->hash : NULL;
-	uri = _icl_ioty_resource_generate_uri(resource->uri_path, query_hash);
+	uri = _icl_ioty_resource_generate_uri(resource->uri_path, query);
 	if (NULL == uri) {
-		ERR("_icd_ioty_resource_generate_uri() Fail");
+		ERR("_icl_ioty_resource_generate_uri() Fail");
 		return IOTCON_ERROR_INVALID_PARAMETER;
 	}
 
@@ -903,7 +950,6 @@ static int _icl_ioty_remote_resource_crud(
 	FN_CALL;
 	int ret, timeout, options_size = 0;
 	char *uri;
-	GHashTable *query_hash;
 	icl_response_container_s *cb_container;
 	OCCallbackData cbdata = {0};
 	OCHeaderOption *oic_options_ptr = NULL;
@@ -919,10 +965,7 @@ static int _icl_ioty_remote_resource_crud(
 	/* method (request type) */
 	method = ic_ioty_convert_request_type(req_type);
 
-	/* uri */
-	query_hash = (query && query->hash) ? query->hash : NULL;
-
-	uri = _icl_ioty_resource_generate_uri(resource->uri_path, query_hash);
+	uri = _icl_ioty_resource_generate_uri(resource->uri_path, query);
 	if (NULL == uri) {
 		ERR("_icl_ioty_resource_generate_uri() Fail");
 		return IOTCON_ERROR_INVALID_PARAMETER;

@@ -23,6 +23,8 @@
 
 #include "iotcon.h"
 #include "ic.h"
+#include "ic-utils.h"
+#include "ic-common.h"
 #include "ic-list.h"
 #include "ic-value.h"
 #include "ic-options.h"
@@ -86,12 +88,18 @@ static void _ic_ioty_conn_type_to_oic_transport_type(int conn_type,
 int ic_ioty_convert_connectivity(const char *host_address, int conn_type,
 		OCDevAddr *dev_addr)
 {
+	int index = 0;
 	char host[PATH_MAX] = {0};
 	char *dev_host, *ptr = NULL;
 
 	RETV_IF(NULL == dev_addr, IOTCON_ERROR_INVALID_PARAMETER);
 
-	snprintf(host, sizeof(host), "%s", host_address);
+	if (IC_EQUAL == strncmp(IC_COAPS, host_address, strlen(IC_COAPS)))
+		index = strlen(IC_COAPS);
+	else if (IC_EQUAL == strncmp(IC_COAP, host_address, strlen(IC_COAP)))
+		index = strlen(IC_COAP);
+
+	snprintf(host, sizeof(host), "%s", &host_address[index]);
 
 	switch (conn_type) {
 	case IOTCON_CONNECTIVITY_IPV4:

@@ -35,8 +35,7 @@
  * If resource_type is NULL, then All resources in host are discovered. */
 API int iotcon_find_resource(const char *host_address,
 		iotcon_connectivity_type_e connectivity_type,
-		const char *resource_type,
-		bool is_secure,
+		iotcon_query_h query,
 		iotcon_found_resource_cb cb,
 		void *user_data)
 {
@@ -46,15 +45,13 @@ API int iotcon_find_resource(const char *host_address,
 	RETV_IF(false == ic_utils_check_permission(IC_PERMISSION_INTERNET),
 			IOTCON_ERROR_PERMISSION_DENIED);
 	RETV_IF(NULL == cb, IOTCON_ERROR_INVALID_PARAMETER);
-	RETV_IF(resource_type && (false == icl_resource_check_type(resource_type)),
-			IOTCON_ERROR_INVALID_PARAMETER);
 
 	switch (connectivity_type) {
 	case IOTCON_CONNECTIVITY_IPV4:
 	case IOTCON_CONNECTIVITY_IPV6:
 	case IOTCON_CONNECTIVITY_ALL:
-		ret = icl_ioty_find_resource(host_address, connectivity_type, resource_type,
-				is_secure, cb, user_data);
+		ret = icl_ioty_find_resource(host_address, connectivity_type, query, cb,
+				user_data);
 		if (IOTCON_ERROR_NONE != ret) {
 			ERR("icl_ioty_find_resource() Fail(%d)", ret);
 			return ret;
@@ -78,6 +75,7 @@ API int iotcon_remote_resource_create(const char *host_address,
 		iotcon_remote_resource_h *resource_handle)
 {
 	FN_CALL;
+	char temp[PATH_MAX] = {0};
 	iotcon_remote_resource_h resource = NULL;
 
 	RETV_IF(false == ic_utils_check_ocf_feature(), IOTCON_ERROR_NOT_SUPPORTED);
@@ -91,13 +89,20 @@ API int iotcon_remote_resource_create(const char *host_address,
 	RETVM_IF(IOTCON_CONNECTIVITY_ALL == connectivity_type, IOTCON_ERROR_INVALID_PARAMETER,
 		"Should use specific connectivity type of the remote resource");
 
+	if (IC_EQUAL == strncmp(IC_COAP_PREFIX, host_address, strlen(IC_COAP_PREFIX)))
+		snprintf(temp, sizeof(temp), "%s", host_address);
+	else if (policies & IOTCON_RESOURCE_SECURE)
+		snprintf(temp, sizeof(temp), "%s%s", IC_COAPS, host_address);
+	else
+		snprintf(temp, sizeof(temp), "%s%s", IC_COAP, host_address);
+
 	resource = calloc(1, sizeof(struct icl_remote_resource));
 	if (NULL == resource) {
 		ERR("calloc() Fail(%d)", errno);
 		return IOTCON_ERROR_OUT_OF_MEMORY;
 	}
 
-	resource->host_address = ic_utils_strdup(host_address);
+	resource->host_address = ic_utils_strdup(temp);
 	resource->connectivity_type = connectivity_type;
 	resource->uri_path = ic_utils_strdup(uri_path);
 	resource->policies = policies;

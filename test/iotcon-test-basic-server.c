@@ -488,7 +488,6 @@ static void _request_handler(iotcon_resource_h resource, iotcon_request_h reques
 		return;
 	}
 
-
 	door = user_data;
 
 	if (IOTCON_REQUEST_GET == type)

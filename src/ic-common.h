@@ -28,8 +28,9 @@
 
 #define IC_OBSERVE_ID_MAX_LEN 256
 
-#define IC_IOTY_COAP "coap://"
-#define IC_IOTY_COAPS "coaps://"
-#define IC_IOTY_MULTICAST_ADDRESS "224.0.1.187:5683"
+#define IC_COAP "coap://"
+#define IC_COAPS "coaps://"
+#define IC_COAP_PREFIX "coap"
+#define IC_MULTICAST_ADDRESS "224.0.1.187:5683"
 
 #endif /* __IOTCON_INTERNAL_COMMON_H__ */

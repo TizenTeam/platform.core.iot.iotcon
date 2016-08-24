@@ -151,7 +151,9 @@ void iotcon_query_destroy(iotcon_query_h query);
  *
  * @since_tizen 3.0
  *
- * @remarks @a type must not be released using free().
+ * @remarks @a resource_type must not be released using free().
+ * @a resource_type must start with a lowercase alphabetic character, followed by a sequence
+ * of lowercase alphabetic, numeric, ".", or "-" characters, and contains no white space.
  *
  * @param[in] query The handle of the query
  * @param[out] resource_type Found resource type from query

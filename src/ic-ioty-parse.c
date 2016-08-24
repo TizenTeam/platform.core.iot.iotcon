@@ -92,20 +92,25 @@ int ic_ioty_parse_oic_dev_address(OCDevAddr *dev_addr, char **host_address,
 {
 	int connectivity_type;
 	char host_addr[PATH_MAX] = {0};
+	const char *coap_str;
 
 	RETV_IF(NULL == host_address, IOTCON_ERROR_INVALID_PARAMETER);
 	RETV_IF(NULL == conn_type, IOTCON_ERROR_INVALID_PARAMETER);
 
-	connectivity_type = _ioty_parse_oic_transport(dev_addr->adapter,
-			dev_addr->flags);
+	connectivity_type = _ioty_parse_oic_transport(dev_addr->adapter, dev_addr->flags);
+
+	if (OC_FLAG_SECURE & dev_addr->flags)
+		coap_str = IC_COAPS;
+	else
+		coap_str = IC_COAP;
 
 	switch (connectivity_type) {
 	case IOTCON_CONNECTIVITY_IPV6:
-		snprintf(host_addr, sizeof(host_addr), "[%s]:%d", dev_addr->addr,
+		snprintf(host_addr, sizeof(host_addr), "%s[%s]:%d", coap_str, dev_addr->addr,
 				dev_addr->port);
 		break;
 	case IOTCON_CONNECTIVITY_IPV4:
-		snprintf(host_addr, sizeof(host_addr), "%s:%d", dev_addr->addr,
+		snprintf(host_addr, sizeof(host_addr), "%s%s:%d", coap_str, dev_addr->addr,
 				dev_addr->port);
 		break;
 	default:
@@ -120,7 +125,7 @@ int ic_ioty_parse_oic_dev_address(OCDevAddr *dev_addr, char **host_address,
 	return IOTCON_ERROR_NONE;
 }
 
-iotcon_response_result_e  ic_ioty_parse_oic_response_result(OCStackResult result)
+iotcon_response_result_e ic_ioty_parse_oic_response_result(OCStackResult result)
 {
 	switch (result) {
 	case OC_STACK_OK:
