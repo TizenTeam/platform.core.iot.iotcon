@@ -106,7 +106,7 @@ API int iotcon_resource_types_add(iotcon_resource_types_h types, const char *typ
 
 	if (true == _icl_resource_types_duplicate_check(types, type)) {
 		ERR("%s is already contained.", type);
-		return IOTCON_ERROR_INVALID_PARAMETER;
+		return IOTCON_ERROR_ALREADY;
 	}
 
 	resource_type = strdup(type);

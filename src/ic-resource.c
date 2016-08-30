@@ -254,7 +254,7 @@ API int iotcon_resource_unbind_child_resource(iotcon_resource_h parent,
 
 	if (NULL == g_list_find(parent->children, child)) {
 		ERR("child resource is not bound to parent resource.");
-		return IOTCON_ERROR_INVALID_PARAMETER;
+		return IOTCON_ERROR_NO_DATA;
 	}
 
 	ret = icl_ioty_resource_unbind_child_resource(parent, child);

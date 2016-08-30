@@ -157,6 +157,7 @@ void iotcon_resource_types_destroy(iotcon_resource_types_h types);
  * @retval #IOTCON_ERROR_NONE  Successful
  * @retval #IOTCON_ERROR_NOT_SUPPORTED  Not supported
  * @retval #IOTCON_ERROR_INVALID_PARAMETER  Invalid parameter
+ * @retval #IOTCON_ERROR_ALREADY  Already done
  *
  * @see iotcon_resource_types_create()
  * @see iotcon_resource_types_destroy()

@@ -155,6 +155,7 @@ void iotcon_resource_interfaces_destroy(iotcon_resource_interfaces_h ifaces);
  * @retval #IOTCON_ERROR_NONE  Successful
  * @retval #IOTCON_ERROR_NOT_SUPPORTED  Not supported
  * @retval #IOTCON_ERROR_INVALID_PARAMETER  Invalid parameter
+ * @retval #IOTCON_ERROR_ALREADY  Already done
  *
  * @see iotcon_resource_interfaces_create()
  * @see iotcon_resource_interfaces_destroy()

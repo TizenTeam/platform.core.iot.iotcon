@@ -106,7 +106,7 @@ API int iotcon_resource_interfaces_add(iotcon_resource_interfaces_h ifaces,
 
 	if (true == _icl_resource_interfaces_duplicate_check(ifaces, iface)) {
 		ERR("%s is already contained.", iface);
-		return IOTCON_ERROR_INVALID_PARAMETER;
+		return IOTCON_ERROR_ALREADY;
 	}
 
 	resource_iface = strdup(iface);

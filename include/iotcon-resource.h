@@ -306,6 +306,7 @@ int iotcon_resource_destroy(iotcon_resource_h resource_handle);
  * @retval #IOTCON_ERROR_INVALID_PARAMETER  Invalid parameter
  * @retval #IOTCON_ERROR_SYSTEM System error
  * @retval #IOTCON_ERROR_PERMISSION_DENIED Permission denied
+ * @retval #IOTCON_ERROR_ALREADY  Already done
  *
  * @pre iotcon_initialize() should be called to initialize.
  *
@@ -339,6 +340,7 @@ int iotcon_resource_bind_interface(iotcon_resource_h resource, const char *iface
  * @retval #IOTCON_ERROR_INVALID_PARAMETER  Invalid parameter
  * @retval #IOTCON_ERROR_SYSTEM System error
  * @retval #IOTCON_ERROR_PERMISSION_DENIED Permission denied
+ * @retval #IOTCON_ERROR_ALREADY  Already done
  *
  * @pre iotcon_initialize() should be called to initialize.
  *
@@ -429,6 +431,7 @@ int iotcon_resource_bind_child_resource(iotcon_resource_h parent,
  * @retval #IOTCON_ERROR_INVALID_PARAMETER  Invalid parameter
  * @retval #IOTCON_ERROR_SYSTEM System error
  * @retval #IOTCON_ERROR_PERMISSION_DENIED Permission denied
+ * @retval #IOTCON_ERROR_NO_DATA No data available
  *
  * @pre iotcon_initialize() should be called to initialize.
  *
