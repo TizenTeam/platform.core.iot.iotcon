@@ -87,9 +87,10 @@ API int iotcon_options_create(iotcon_options_h *ret_options)
 }
 
 
-API void iotcon_options_destroy(iotcon_options_h options)
+API int iotcon_options_destroy(iotcon_options_h options)
 {
-	RET_IF(NULL == options);
+	RETV_IF(false == ic_utils_check_ocf_feature(), IOTCON_ERROR_NOT_SUPPORTED);
+	RETV_IF(NULL == options, IOTCON_ERROR_INVALID_PARAMETER);
 
 	options->ref_count--;
 
@@ -97,6 +98,8 @@ API void iotcon_options_destroy(iotcon_options_h options)
 		g_hash_table_unref(options->hash);
 		free(options);
 	}
+
+	return IOTCON_ERROR_NONE;
 }
 
 

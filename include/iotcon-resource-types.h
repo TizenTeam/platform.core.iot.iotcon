@@ -132,14 +132,17 @@ int iotcon_resource_types_create(iotcon_resource_types_h *types);
  *
  * @param[in] types The handle of the resource types
  *
- * @return void
+ * @return 0 on success, otherwise a negative error value.
+ * @retval #IOTCON_ERROR_NONE  Successful
+ * @retval #IOTCON_ERROR_NOT_SUPPORTED  Not supported
+ * @retval #IOTCON_ERROR_INVALID_PARAMETER  Invalid parameter
  *
  * @see iotcon_resource_types_create()
  * @see iotcon_resource_types_add()
  * @see iotcon_resource_types_remove()
  * @see iotcon_resource_types_clone()
  */
-void iotcon_resource_types_destroy(iotcon_resource_types_h types);
+int iotcon_resource_types_destroy(iotcon_resource_types_h types);
 
 /**
  * @brief Inserts a resource type into the list.

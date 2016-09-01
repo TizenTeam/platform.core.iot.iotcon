@@ -648,16 +648,17 @@ API int iotcon_list_foreach_attributes(iotcon_list_h list,
 }
 
 
-API void iotcon_list_destroy(iotcon_list_h list)
+API int iotcon_list_destroy(iotcon_list_h list)
 {
 	GList *cur = NULL;
 
-	RET_IF(NULL == list);
+	RETV_IF(false == ic_utils_check_ocf_feature(), IOTCON_ERROR_NOT_SUPPORTED);
+	RETV_IF(NULL == list, IOTCON_ERROR_INVALID_PARAMETER);
 
 	list->ref_count--;
 
 	if (0 != list->ref_count)
-		return;
+		return IOTCON_ERROR_NONE;
 
 	cur = list->list;
 	while (cur) {
@@ -665,4 +666,6 @@ API void iotcon_list_destroy(iotcon_list_h list)
 		cur = cur->next;
 	}
 	free(list);
+
+	return IOTCON_ERROR_NONE;
 }

@@ -228,11 +228,14 @@ int iotcon_representation_create(iotcon_representation_h *repr);
  *
  * @param[in] repr The representation handle to free
  *
- * @return void
+ * @return 0 on success, otherwise a negative error value.
+ * @retval #IOTCON_ERROR_NONE  Successful
+ * @retval #IOTCON_ERROR_NOT_SUPPORTED  Not supported
+ * @retval #IOTCON_ERROR_INVALID_PARAMETER  Invalid parameter
  *
  * @see iotcon_representation_create()
  */
-void iotcon_representation_destroy(iotcon_representation_h repr);
+int iotcon_representation_destroy(iotcon_representation_h repr);
 
 /**
  * @brief Clones from the source representation.

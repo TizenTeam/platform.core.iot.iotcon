@@ -56,9 +56,10 @@ API int iotcon_resource_interfaces_create(iotcon_resource_interfaces_h *ret_ifac
 }
 
 
-API void iotcon_resource_interfaces_destroy(iotcon_resource_interfaces_h ifaces)
+API int iotcon_resource_interfaces_destroy(iotcon_resource_interfaces_h ifaces)
 {
-	RET_IF(NULL == ifaces);
+	RETV_IF(false == ic_utils_check_ocf_feature(), IOTCON_ERROR_NOT_SUPPORTED);
+	RETV_IF(NULL == ifaces, IOTCON_ERROR_INVALID_PARAMETER);
 
 	ifaces->ref_count--;
 
@@ -66,6 +67,8 @@ API void iotcon_resource_interfaces_destroy(iotcon_resource_interfaces_h ifaces)
 		g_list_free_full(ifaces->iface_list, free);
 		free(ifaces);
 	}
+
+	return IOTCON_ERROR_NONE;
 }
 
 

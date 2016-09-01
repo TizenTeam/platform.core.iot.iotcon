@@ -56,9 +56,10 @@ API int iotcon_resource_types_create(iotcon_resource_types_h *ret_types)
 }
 
 
-API void iotcon_resource_types_destroy(iotcon_resource_types_h types)
+API int iotcon_resource_types_destroy(iotcon_resource_types_h types)
 {
-	RET_IF(NULL == types);
+	RETV_IF(false == ic_utils_check_ocf_feature(), IOTCON_ERROR_NOT_SUPPORTED);
+	RETV_IF(NULL == types, IOTCON_ERROR_INVALID_PARAMETER);
 
 	types->ref_count--;
 
@@ -66,6 +67,8 @@ API void iotcon_resource_types_destroy(iotcon_resource_types_h types)
 		g_list_free_full(types->type_list, free);
 		free(types);
 	}
+
+	return IOTCON_ERROR_NONE;
 }
 
 

@@ -218,9 +218,15 @@ int iotcon_response_create(iotcon_request_h request, iotcon_response_h *response
  *
  * @param[in] resp The handle of the response
  *
+ * @return 0 on success, otherwise a negative error value.
+ * @retval #IOTCON_ERROR_NONE  Successful
+ * @retval #IOTCON_ERROR_NOT_SUPPORTED  Not supported
+ * @retval #IOTCON_ERROR_INVALID_PARAMETER  Invalid parameter
+ * @retval #IOTCON_ERROR_OUT_OF_MEMORY  Out of memory
+ *
  * @see iotcon_response_create()
  */
-void iotcon_response_destroy(iotcon_response_h resp);
+int iotcon_response_destroy(iotcon_response_h resp);
 
 
 /**

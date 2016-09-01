@@ -32,7 +32,7 @@
  *  \#include <iotcon.h>
  *
  * @section CAPI_IOT_CONNECTIVITY_SERVER_OBSERVERS_MODULE_OVERVIEW Overview
- * The iotcon overview API provides methods for managing oberve id.
+ * The iotcon overview API provides methods for managing observe id.
  *
  * Example :
  * @code
@@ -157,13 +157,16 @@ int iotcon_observers_create(iotcon_observers_h *observers);
  *
  * @param[in] observers The handle of the observers
  *
- * @return void
+ * @return 0 on success, otherwise a negative error value.
+ * @retval #IOTCON_ERROR_NONE  Successful
+ * @retval #IOTCON_ERROR_NOT_SUPPORTED  Not supported
+ * @retval #IOTCON_ERROR_INVALID_PARAMETER  Invalid parameter
  *
  * @see iotcon_observers_create()
  * @see iotcon_observers_add()
  * @see iotcon_observers_remove()
  */
-void iotcon_observers_destroy(iotcon_observers_h observers);
+int iotcon_observers_destroy(iotcon_observers_h observers);
 
 /**
  * @brief Adds a observer id into the observers handle.

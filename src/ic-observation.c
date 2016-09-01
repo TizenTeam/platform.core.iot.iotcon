@@ -39,12 +39,15 @@ API int iotcon_observers_create(iotcon_observers_h *ret_observers)
 }
 
 
-API void iotcon_observers_destroy(iotcon_observers_h observers)
+API int iotcon_observers_destroy(iotcon_observers_h observers)
 {
-	RET_IF(NULL == observers);
+	RETV_IF(false == ic_utils_check_ocf_feature(), IOTCON_ERROR_NOT_SUPPORTED);
+	RETV_IF(NULL == observers, IOTCON_ERROR_INVALID_PARAMETER);
 
 	g_list_free(observers->observers_list);
 	free(observers);
+
+	return IOTCON_ERROR_NONE;
 }
 
 

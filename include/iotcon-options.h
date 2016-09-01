@@ -147,17 +147,20 @@ int iotcon_options_create(iotcon_options_h *options);
  *
  * @param[in] options The handle of the options
  *
- * @return void
+ * @return 0 on success, otherwise a negative error value.
+ * @retval #IOTCON_ERROR_NONE  Successful
+ * @retval #IOTCON_ERROR_NOT_SUPPORTED  Not supported
+ * @retval #IOTCON_ERROR_INVALID_PARAMETER Invalid parameter
  *
  * @see iotcon_options_create()
  * @see iotcon_options_add()
  * @see iotcon_options_remove()
  * @see iotcon_options_lookup()
  */
-void iotcon_options_destroy(iotcon_options_h options);
+int iotcon_options_destroy(iotcon_options_h options);
 
 /**
- * @brief Adds a new id and a correspoding data into the options.
+ * @brief Adds a new id and a corresponding data into the options.
  *
  * @since_tizen 3.0
  * @remarks iotcon_options_h can have up to 2 options. \n

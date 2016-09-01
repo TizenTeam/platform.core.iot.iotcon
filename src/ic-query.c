@@ -48,12 +48,15 @@ API int iotcon_query_create(iotcon_query_h *ret_query)
 }
 
 
-API void iotcon_query_destroy(iotcon_query_h query)
+API int iotcon_query_destroy(iotcon_query_h query)
 {
-	RET_IF(NULL == query);
+	RETV_IF(false == ic_utils_check_ocf_feature(), IOTCON_ERROR_NOT_SUPPORTED);
+	RETV_IF(NULL == query, IOTCON_ERROR_INVALID_PARAMETER);
 
 	g_hash_table_unref(query->hash);
 	free(query);
+
+	return IOTCON_ERROR_NONE;
 }
 
 

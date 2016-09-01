@@ -84,8 +84,10 @@ API int iotcon_initialize(const char *file_path)
 	return icl_initialize(file_path, false);
 }
 
-API void iotcon_deinitialize(void)
+API int iotcon_deinitialize(void)
 {
+	RETV_IF(false == ic_utils_check_ocf_feature(), IOTCON_ERROR_NOT_SUPPORTED);
+
 	ic_utils_mutex_lock(IC_UTILS_MUTEX_INIT);
 
 	icl_init_count--;
@@ -95,6 +97,8 @@ API void iotcon_deinitialize(void)
 	}
 
 	ic_utils_mutex_unlock(IC_UTILS_MUTEX_INIT);
+
+	return IOTCON_ERROR_NONE;
 }
 
 API int iotcon_get_timeout(int *timeout_seconds)

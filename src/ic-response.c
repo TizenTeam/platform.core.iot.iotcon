@@ -55,15 +55,18 @@ API int iotcon_response_create(iotcon_request_h request,
 }
 
 
-API void iotcon_response_destroy(iotcon_response_h resp)
+API int iotcon_response_destroy(iotcon_response_h resp)
 {
-	RET_IF(NULL == resp);
+	RETV_IF(false == ic_utils_check_ocf_feature(), IOTCON_ERROR_NOT_SUPPORTED);
+	RETV_IF(NULL == resp, IOTCON_ERROR_INVALID_PARAMETER);
 
 	if (resp->repr)
 		iotcon_representation_destroy(resp->repr);
 	if (resp->header_options)
 		iotcon_options_destroy(resp->header_options);
 	free(resp);
+
+	return IOTCON_ERROR_NONE;
 }
 
 API int iotcon_response_get_options(iotcon_response_h resp,

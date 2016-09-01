@@ -160,14 +160,17 @@ void icl_remote_resource_unref(iotcon_remote_resource_h resource)
 }
 
 
-API void iotcon_remote_resource_destroy(iotcon_remote_resource_h resource)
+API int iotcon_remote_resource_destroy(iotcon_remote_resource_h resource)
 {
-	RET_IF(NULL == resource);
+	RETV_IF(false == ic_utils_check_ocf_feature(), IOTCON_ERROR_NOT_SUPPORTED);
+	RETV_IF(NULL == resource, IOTCON_ERROR_INVALID_PARAMETER);
 
 	if (resource->observe_handle)
 		iotcon_remote_resource_observe_deregister(resource);
 
 	icl_remote_resource_unref(resource);
+
+	return IOTCON_ERROR_NONE;
 }
 
 static bool _icl_remote_resource_header_foreach_cb(unsigned short id,

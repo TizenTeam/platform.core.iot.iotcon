@@ -132,14 +132,17 @@ int iotcon_resource_interfaces_create(iotcon_resource_interfaces_h *ifaces);
  *
  * @param[in] ifaces The handle of the resource ifaces
  *
- * @return void
+ * @return 0 on success, otherwise a negative error value.
+ * @retval #IOTCON_ERROR_NONE  Successful
+ * @retval #IOTCON_ERROR_NOT_SUPPORTED  Not supported
+ * @retval #IOTCON_ERROR_INVALID_PARAMETER  Invalid parameter
  *
  * @see iotcon_resource_interfaces_create()
  * @see iotcon_resource_interfaces_add()
  * @see iotcon_resource_interfaces_remove()
  * @see iotcon_resource_interfaces_clone()
  */
-void iotcon_resource_interfaces_destroy(iotcon_resource_interfaces_h ifaces);
+int iotcon_resource_interfaces_destroy(iotcon_resource_interfaces_h ifaces);
 
 /**
  * @brief Inserts a resource iface into the list.

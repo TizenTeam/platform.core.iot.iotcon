@@ -158,12 +158,15 @@ int iotcon_remote_resource_create(const char *host_address,
  *
  * @param[in] resource The handle of the resource
  *
- * @return void
+ * @return 0 on success, otherwise a negative error value.
+ * @retval #IOTCON_ERROR_NONE  Successful
+ * @retval #IOTCON_ERROR_NOT_SUPPORTED  Not supported
+ * @retval #IOTCON_ERROR_INVALID_PARAMETER  Invalid parameter
  *
  * @see iotcon_remote_resource_create()
  * @see iotcon_remote_resource_clone()
  */
-void iotcon_remote_resource_destroy(iotcon_remote_resource_h resource);
+int iotcon_remote_resource_destroy(iotcon_remote_resource_h resource);
 
 /**
  * @brief Clones a clone of a remote resource.

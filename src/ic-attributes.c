@@ -58,17 +58,20 @@ API int iotcon_attributes_create(iotcon_attributes_h *ret_attributes)
 }
 
 
-API void iotcon_attributes_destroy(iotcon_attributes_h attributes)
+API int iotcon_attributes_destroy(iotcon_attributes_h attributes)
 {
-	RET_IF(NULL == attributes);
+	RETV_IF(false == ic_utils_check_ocf_feature(), IOTCON_ERROR_NOT_SUPPORTED);
+	RETV_IF(NULL == attributes, IOTCON_ERROR_INVALID_PARAMETER);
 
 	attributes->ref_count--;
 
 	if (0 != attributes->ref_count)
-		return;
+		return IOTCON_ERROR_NONE;
 
 	g_hash_table_destroy(attributes->hash_table);
 	free(attributes);
+
+	return IOTCON_ERROR_NONE;
 }
 
 

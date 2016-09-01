@@ -71,14 +71,15 @@ API int iotcon_representation_create(iotcon_representation_h *ret_repr)
 }
 
 
-API void iotcon_representation_destroy(iotcon_representation_h repr)
+API int iotcon_representation_destroy(iotcon_representation_h repr)
 {
-	RET_IF(NULL == repr);
+	RETV_IF(false == ic_utils_check_ocf_feature(), IOTCON_ERROR_NOT_SUPPORTED);
+	RETV_IF(NULL == repr, IOTCON_ERROR_INVALID_PARAMETER);
 
 	repr->ref_count--;
 
 	if (0 != repr->ref_count)
-		return;
+		return IOTCON_ERROR_NONE;
 
 	free(repr->uri_path);
 
@@ -98,6 +99,8 @@ API void iotcon_representation_destroy(iotcon_representation_h repr)
 		iotcon_attributes_destroy(repr->attributes);
 
 	free(repr);
+
+	return IOTCON_ERROR_NONE;
 }
 
 

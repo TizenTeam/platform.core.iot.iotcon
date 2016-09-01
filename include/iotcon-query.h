@@ -137,14 +137,17 @@ int iotcon_query_create(iotcon_query_h *query);
  *
  * @param[in] query The handle of the query
  *
- * @return void
+ * @return 0 on success, otherwise a negative error value.
+ * @retval #IOTCON_ERROR_NONE  Successful
+ * @retval #IOTCON_ERROR_NOT_SUPPORTED  Not supported
+ * @retval #IOTCON_ERROR_INVALID_PARAMETER  Invalid parameter
  *
  * @see iotcon_query_create()
  * @see iotcon_query_add()
  * @see iotcon_query_remove()
  * @see iotcon_query_lookup()
  */
-void iotcon_query_destroy(iotcon_query_h query);
+int iotcon_query_destroy(iotcon_query_h query);
 
 /**
  * @brief Gets resource type from the query.
@@ -204,7 +207,7 @@ int iotcon_query_get_interface(iotcon_query_h query, char **resource_iface);
  * @since_tizen 3.0
  *
  * @param[in] query The handle of the query
- * @param[in] resource_type The resoure type to set into the query
+ * @param[in] resource_type The resource type to set into the query
  *
  * @return 0 on success, otherwise a negative error value.
  * @retval #IOTCON_ERROR_NONE  Successful
@@ -247,7 +250,7 @@ int iotcon_query_set_resource_type(iotcon_query_h query, const char *resource_ty
 int iotcon_query_set_interface(iotcon_query_h query, const char *resource_iface);
 
 /**
- * @brief Adds a new key and correspoding value into the query.
+ * @brief Adds a new key and corresponding value into the query.
  *
  * @since_tizen 3.0
  * @remarks The full length of query should be less than or equal to 64.

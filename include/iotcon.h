@@ -80,13 +80,15 @@ int iotcon_initialize(const char *file_path);
  *
  * @remarks This function must be called if IoTCon API is no longer needed.
  *
- * @return void
+ * @return  0 on success, otherwise a negative error value.
+ * @retval #IOTCON_ERROR_NONE Successful
+ * @retval #IOTCON_ERROR_NOT_SUPPORTED  Not supported
  *
  * @pre iotcon_initialize() should be called to initialize.
  *
  * @see iotcon_initialize()
  */
-void iotcon_deinitialize(void);
+int iotcon_deinitialize(void);
 
 /**
  * @brief Gets the timeout seconds of asynchronous API.

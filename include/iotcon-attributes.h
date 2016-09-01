@@ -59,7 +59,7 @@ static void _request_handler(iotcon_resource_h resource, iotcon_request_h reques
 
 		ret = iotcon_representation_create(&representation);
 		if (IOTCON_ERROR_NONE != ret) {
-			iotcon_response_destroy(resopnse);
+			iotcon_response_destroy(response);
 			return;
 		}
 
@@ -68,7 +68,7 @@ static void _request_handler(iotcon_resource_h resource, iotcon_request_h reques
 		ret = iotcon_attributes_create(&attributes);
 		if (IOTCON_ERROR_NONE != ret) {
 			iotcon_representation_destroy(representation);
-			iotcon_response_destroy(resopnse);
+			iotcon_response_destroy(response);
 			return;
 		}
 
@@ -76,7 +76,7 @@ static void _request_handler(iotcon_resource_h resource, iotcon_request_h reques
 		if (IOTCON_ERROR_NONE != ret) {
 			iotcon_attributes_destroy(attributes);
 			iotcon_representation_destroy(representation);
-			iotcon_response_destroy(resopnse);
+			iotcon_response_destroy(response);
 			return;
 		}
 
@@ -84,7 +84,7 @@ static void _request_handler(iotcon_resource_h resource, iotcon_request_h reques
 		if (IOTCON_ERROR_NONE != ret) {
 			iotcon_attributes_destroy(attributes);
 			iotcon_representation_destroy(representation);
-			iotcon_response_destroy(resopnse);
+			iotcon_response_destroy(response);
 			return;
 		}
 
@@ -92,7 +92,7 @@ static void _request_handler(iotcon_resource_h resource, iotcon_request_h reques
 		if (IOTCON_ERROR_NONE != ret) {
 			iotcon_attributes_destroy(attributes);
 			iotcon_representation_destroy(representation);
-			iotcon_response_destroy(resopnse);
+			iotcon_response_destroy(response);
 			return;
 		}
 
@@ -102,7 +102,7 @@ static void _request_handler(iotcon_resource_h resource, iotcon_request_h reques
 		if (IOTCON_ERROR_NONE != ret) {
 			iotcon_attributes_destroy(attributes);
 			iotcon_representation_destroy(representation);
-			iotcon_response_destroy(resopnse);
+			iotcon_response_destroy(response);
 			return;
 		}
 
@@ -110,13 +110,13 @@ static void _request_handler(iotcon_resource_h resource, iotcon_request_h reques
 		if (IOTCON_ERROR_NONE != ret) {
 			iotcon_attributes_destroy(attributes);
 			iotcon_representation_destroy(representation);
-			iotcon_response_destroy(resopnse);
+			iotcon_response_destroy(response);
 			return;
 		}
 
 		iotcon_attributes_destroy(attributes);
 		iotcon_representation_destroy(representation);
-		iotcon_response_destroy(resopnse);
+		iotcon_response_destroy(response);
 	}
 	...
 }
@@ -165,11 +165,14 @@ int iotcon_attributes_create(iotcon_attributes_h *attributes);
  *
  * @param[in] attributes The attributes handle to free
  *
- * @return void
+ * @return 0 on success, otherwise a negative error value.
+ * @retval #IOTCON_ERROR_NONE  Successful
+ * @retval #IOTCON_ERROR_NOT_SUPPORTED  Not supported
+ * @retval #IOTCON_ERROR_INVALID_PARAMETER  Invalid parameter
  *
  * @see iotcon_attributes_create()
  */
-void iotcon_attributes_destroy(iotcon_attributes_h attributes);
+int iotcon_attributes_destroy(iotcon_attributes_h attributes);
 
 /**
  * @brief Clones a attributes handle.
