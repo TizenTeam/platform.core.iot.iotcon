@@ -29,7 +29,8 @@
 #include "ic-resource-interfaces.h"
 #include "ic-ioty.h"
 
-#define ICL_REMOTE_RESOURCE_MAX_TIME_INTERVAL 3600 /* 60 min */
+#define ICL_REMOTE_RESOURCE_MAX_CHECKING_INTERVAL 3600 /* 60 min */
+#define ICL_REMOTE_RESOURCE_DEFAULT_CHECKING_INTERVAL 10 /* 10 sec */
 
 /* The length of resource_type should be less than or equal to 61.
  * If resource_type is NULL, then All resources in host are discovered. */
@@ -108,6 +109,7 @@ API int iotcon_remote_resource_create(const char *host_address,
 	resource->policies = policies;
 	resource->types = icl_resource_types_ref(resource_types);
 	resource->ifaces = icl_resource_interfaces_ref(resource_ifaces);
+	resource->checking_interval = ICL_REMOTE_RESOURCE_DEFAULT_CHECKING_INTERVAL;
 	resource->ref_count = 1;
 
 	*resource_handle = resource;
@@ -139,6 +141,12 @@ static void _icl_remote_resource_destroy(iotcon_remote_resource_h resource)
 	/* null COULD be allowed */
 	if (resource->header_options)
 		iotcon_options_destroy(resource->header_options);
+
+	if (resource->monitoring.presence)
+		iotcon_remote_resource_stop_monitoring(resource);
+
+	if (resource->caching.observe)
+		iotcon_remote_resource_stop_caching(resource);
 
 	free(resource);
 }
@@ -220,6 +228,7 @@ API int iotcon_remote_resource_clone(iotcon_remote_resource_h src,
 	resource->device_id = ic_utils_strdup(src->device_id);
 	resource->device_name = ic_utils_strdup(src->device_name);
 	resource->policies = src->policies;
+	resource->checking_interval = src->checking_interval;
 	resource->ref_count = 1;
 
 	if (src->header_options) {
@@ -399,38 +408,38 @@ API int iotcon_remote_resource_set_options(iotcon_remote_resource_h resource,
 	return IOTCON_ERROR_NONE;
 }
 
-API int iotcon_remote_resource_get_time_interval(int *time_interval)
+API int iotcon_remote_resource_get_checking_interval(iotcon_remote_resource_h resource,
+		int *interval)
 {
-	int ret, arg_time_interval;
-
 	RETV_IF(false == ic_utils_check_ocf_feature(), IOTCON_ERROR_NOT_SUPPORTED);
-	RETV_IF(NULL == time_interval, IOTCON_ERROR_INVALID_PARAMETER);
+	RETV_IF(NULL == resource, IOTCON_ERROR_INVALID_PARAMETER);
+	RETV_IF(NULL == interval, IOTCON_ERROR_INVALID_PARAMETER);
 
-	ret = icl_ioty_remote_resource_get_time_interval(&arg_time_interval);
-	if (IOTCON_ERROR_NONE != ret) {
-		ERR("icl_ioty_remote_resource_get_time_interval() Fail(%d)", ret);
-		return ret;
-	}
-
-	*time_interval = arg_time_interval;
+	*interval = resource->checking_interval;
 
 	return IOTCON_ERROR_NONE;
 }
 
 
-API int iotcon_remote_resource_set_time_interval(int time_interval)
+API int iotcon_remote_resource_set_checking_interval(iotcon_remote_resource_h resource,
+		int interval)
 {
 	int ret;
 
 	RETV_IF(false == ic_utils_check_ocf_feature(), IOTCON_ERROR_NOT_SUPPORTED);
-	RETV_IF(ICL_REMOTE_RESOURCE_MAX_TIME_INTERVAL < time_interval || time_interval <= 0,
+	RETV_IF(NULL == resource, IOTCON_ERROR_INVALID_PARAMETER);
+	RETV_IF(ICL_REMOTE_RESOURCE_MAX_CHECKING_INTERVAL < interval || interval <= 0,
 			IOTCON_ERROR_INVALID_PARAMETER);
 
-	ret = icl_ioty_remote_resource_set_time_interval(time_interval);
-	if (IOTCON_ERROR_NONE != ret) {
-		ERR("icl_ioty_remote_resource_set_time_interval() Fail(%d)", ret);
-		return ret;
+	if (resource->monitoring.presence || resource->caching.observe) {
+		ret = icl_ioty_remote_resource_set_checking_interval(resource, interval);
+		if (IOTCON_ERROR_NONE != ret) {
+			ERR("icl_ioty_remote_resource_set_checking_interval() Fail(%d)", ret);
+			return ret;
+		}
 	}
+
+	resource->checking_interval = interval;
 
 	return IOTCON_ERROR_NONE;
 }

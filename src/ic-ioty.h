@@ -105,8 +105,8 @@ int icl_ioty_remote_resource_stop_monitoring(iotcon_remote_resource_h resource);
 int icl_ioty_remote_resource_start_caching(iotcon_remote_resource_h resource,
 		iotcon_remote_resource_cached_representation_changed_cb cb, void *user_data);
 int icl_ioty_remote_resource_stop_caching(iotcon_remote_resource_h resource);
-int icl_ioty_remote_resource_set_time_interval(int time_interval);
-int icl_ioty_remote_resource_get_time_interval(int *time_interval);
+int icl_ioty_remote_resource_set_checking_interval(iotcon_remote_resource_h resource,
+		int time_interval);
 
 
 /* server */

@@ -449,8 +449,9 @@ typedef void (*iotcon_remote_resource_cached_representation_changed_cb)(
  * @details Use this function to start caching the resource's attribute.\n
  * Although, remote resource is not observable, it keeps the representation up-to-date.
  * Because It checks whether representation is changed, periodically.\n
- * The default checking interval is 10 seconds, but it may be changed by an administrator. \n
- * Also, you can get the cached representation even when the remote resource is off-line.
+ * Therefore, you can get the cached representation even when the remote resource is off-line.
+ * The default checking interval is 10 seconds.
+ * It can be changed by iotcon_remote_resource_set_checking_interval().
  *
  * @since_tizen 3.0
  * @privlevel public
@@ -523,7 +524,8 @@ typedef void (*iotcon_remote_resource_state_changed_cb)(iotcon_remote_resource_h
  * @details When remote resource's state are changed, registered callbacks will be called
  * in turn. Although, remote resource does not call iotcon_start_presence(), it knows
  * the state of resource. Because it checks the state of resource, periodically.\n
- * The default checking interval is 10 seconds, but it may be changed by an administrator.
+ * The default checking interval is 10 seconds.
+ * It can be changed by iotcon_remote_resource_set_checking_interval().
  *
  * @since_tizen 3.0
  * @privlevel public
@@ -871,47 +873,50 @@ int iotcon_remote_resource_get_cached_representation(
 		iotcon_representation_h *representation);
 
 /**
- * @brief Gets the time interval of monitoring & caching API of remote resource.
- * @details This API get the time interval of iotcon_remote_resource_start_monitoring(),
- * and iotcon_remote_resource_start_caching().\n
- * The functions operate GET method, every saved time interval.
- * Default time interval is 10 seconds.
+ * @brief Gets the checking interval which is using on the monitoring & caching of remote resource.
+ * @details This API get the checking interval which is using in the process of monitoring
+ * and caching() of remote resource.\n
+ * The monitoring and caching will operate "GET method" with the checking interval.
+ * Default checking interval is 10 seconds.
  *
  * @since_tizen 3.0
  *
- * @param[out] time_interval Seconds for time interval
+ * @param[out] interval Seconds for time interval
  *
  * @return 0 on success, otherwise a negative error value.
  * @retval #IOTCON_ERROR_NONE Successful
  * @retval #IOTCON_ERROR_NOT_SUPPORTED  Not supported
  * @retval #IOTCON_ERROR_INVALID_PARAMETER Invalid parameter
  *
- * @see iotcon_remote_resource_set_time_interval()
+ * @see iotcon_remote_resource_set_checking_interval()
  * @see iotcon_remote_resource_start_monitoring()
  * @see iotcon_remote_resource_start_caching()
  */
-int iotcon_remote_resource_get_time_interval(int *time_interval);
+int iotcon_remote_resource_get_checking_interval(iotcon_remote_resource_h resource,
+		int *interval);
 
 /**
- * @brief Sets the time interval of monitoring & caching API of remote resource.
- * @details This API set the time interval of iotcon_remote_resource_start_monitoring(),
- * and iotcon_remote_resource_start_caching().
+ * @brief Sets the checking interval which is using on the monitoring & caching of remote resource.
+ * @details This API set the checking interval which is using in the process of monitoring
+ * and caching() of remote resource.\n
+ * The monitoring and caching will operate "GET method" with the checking interval changed by this function.
+ * Default checking interval is 10 seconds.
  *
  * @since_tizen 3.0
  *
- * @param[in] time_interval Seconds for time interval (must be in range from 1 to 3600)
+ * @param[in] interval Seconds for time interval (must be in range from 1 to 3600)
  *
  * @return 0 on success, otherwise a negative error value.
  * @retval #IOTCON_ERROR_NONE Successful
  * @retval #IOTCON_ERROR_NOT_SUPPORTED  Not supported
  * @retval #IOTCON_ERROR_INVALID_PARAMETER Invalid parameter
  *
- * @see iotcon_remote_resource_get_time_interval()
+ * @see iotcon_remote_resource_get_checking_interval()
  * @see iotcon_remote_resource_start_monitoring()
  * @see iotcon_remote_resource_start_caching()
  */
-int iotcon_remote_resource_set_time_interval(int time_interval);
-
+int iotcon_remote_resource_set_checking_interval(iotcon_remote_resource_h resource,
+		int interval);
 
 /**
  * @}

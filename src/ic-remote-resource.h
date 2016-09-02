@@ -23,6 +23,20 @@
 #include "iotcon-remote-resource.h"
 #include "ic-options.h"
 
+typedef struct icl_remote_resource_caching {
+	iotcon_representation_h repr;
+	iotcon_remote_resource_cached_representation_changed_cb cb;
+	void *user_data;
+	int64_t observe;
+} icl_remote_resource_caching_s;
+
+typedef struct icl_remote_resource_monitoring {
+	iotcon_remote_resource_state_changed_cb cb;
+	void *user_data;
+	iotcon_presence_h presence;
+	iotcon_remote_resource_state_e state;
+} icl_remote_resource_monitoring_s;
+
 struct icl_remote_resource {
 	bool is_found;
 	int ref_count;
@@ -36,7 +50,10 @@ struct icl_remote_resource {
 	iotcon_resource_interfaces_h ifaces;
 	iotcon_connectivity_type_e connectivity_type;
 	int64_t observe_handle;
-	iotcon_representation_h cached_repr;
+	int checking_interval;
+	unsigned int timer_id;
+	icl_remote_resource_caching_s caching;
+	icl_remote_resource_monitoring_s monitoring;
 };
 
 void icl_remote_resource_ref(iotcon_remote_resource_h resource);

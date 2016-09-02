@@ -40,6 +40,14 @@ API int iotcon_remote_resource_start_monitoring(
 		ERR("The resource should be cloned.");
 		return IOTCON_ERROR_INVALID_PARAMETER;
 	}
+	if (resource->monitoring.presence) {
+		ERR("Already Start Monitoring");
+		return IOTCON_ERROR_ALREADY;
+	}
+
+	INFO("Start Monitoring");
+
+	resource->monitoring.state = IOTCON_REMOTE_RESOURCE_ALIVE;
 
 	connectivity_type = resource->connectivity_type;
 
@@ -47,9 +55,11 @@ API int iotcon_remote_resource_start_monitoring(
 	case IOTCON_CONNECTIVITY_IPV4:
 	case IOTCON_CONNECTIVITY_IPV6:
 	case IOTCON_CONNECTIVITY_ALL:
+		icl_remote_resource_ref(resource);
 		ret = icl_ioty_remote_resource_start_monitoring(resource, cb, user_data);
 		if (IOTCON_ERROR_NONE != ret) {
 			ERR("icl_ioty_remote_resource_start_monitoring() Fail(%d)", ret);
+			icl_remote_resource_unref(resource);
 			return ret;
 		}
 		break;
@@ -62,8 +72,7 @@ API int iotcon_remote_resource_start_monitoring(
 }
 
 
-API int iotcon_remote_resource_stop_monitoring(
-		iotcon_remote_resource_h resource)
+API int iotcon_remote_resource_stop_monitoring(iotcon_remote_resource_h resource)
 {
 	int ret, connectivity_type;
 
@@ -71,6 +80,11 @@ API int iotcon_remote_resource_stop_monitoring(
 	RETV_IF(false == ic_utils_check_permission(IC_PERMISSION_INTERNET),
 			IOTCON_ERROR_PERMISSION_DENIED);
 	RETV_IF(NULL == resource, IOTCON_ERROR_INVALID_PARAMETER);
+
+	if (NULL == resource->monitoring.presence) {
+		ERR("Not Monitoring");
+		return IOTCON_ERROR_INVALID_PARAMETER;
+	}
 
 	INFO("Stop Monitoring");
 
@@ -85,6 +99,7 @@ API int iotcon_remote_resource_stop_monitoring(
 			ERR("icl_ioty_remote_resource_stop_monitoring() Fail(%d)", ret);
 			return ret;
 		}
+		icl_remote_resource_unref(resource);
 		break;
 	default:
 		ERR("Invalid Connectivity Type(%d)", connectivity_type);
@@ -93,6 +108,4 @@ API int iotcon_remote_resource_stop_monitoring(
 
 	return IOTCON_ERROR_NONE;
 }
-
-
 

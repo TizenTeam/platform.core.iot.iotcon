@@ -40,6 +40,10 @@ API int iotcon_remote_resource_start_caching(iotcon_remote_resource_h resource,
 		ERR("The resource should be cloned.");
 		return IOTCON_ERROR_INVALID_PARAMETER;
 	}
+	if (resource->caching.observe) {
+		ERR("Already Start Caching");
+		return IOTCON_ERROR_ALREADY;
+	}
 
 	INFO("Start Caching");
 
@@ -49,9 +53,11 @@ API int iotcon_remote_resource_start_caching(iotcon_remote_resource_h resource,
 	case IOTCON_CONNECTIVITY_IPV4:
 	case IOTCON_CONNECTIVITY_IPV6:
 	case IOTCON_CONNECTIVITY_ALL:
+		icl_remote_resource_ref(resource);
 		ret = icl_ioty_remote_resource_start_caching(resource, cb, user_data);
 		if (IOTCON_ERROR_NONE != ret) {
 			ERR("icl_ioty_remote_resource_start_caching() Fail(%d)", ret);
+			icl_remote_resource_unref(resource);
 			return ret;
 		}
 		break;
@@ -59,6 +65,7 @@ API int iotcon_remote_resource_start_caching(iotcon_remote_resource_h resource,
 		ERR("Invalid Connectivity Type(%d)", connectivity_type);
 		return IOTCON_ERROR_INVALID_PARAMETER;
 	}
+
 	return IOTCON_ERROR_NONE;
 }
 
@@ -71,6 +78,11 @@ API int iotcon_remote_resource_stop_caching(iotcon_remote_resource_h resource)
 	RETV_IF(false == ic_utils_check_permission(IC_PERMISSION_INTERNET),
 			IOTCON_ERROR_PERMISSION_DENIED);
 	RETV_IF(NULL == resource, IOTCON_ERROR_INVALID_PARAMETER);
+
+	if (0 == resource->caching.observe) {
+		ERR("Not Cached");
+		return IOTCON_ERROR_INVALID_PARAMETER;
+	}
 
 	INFO("Stop Caching");
 
@@ -85,6 +97,7 @@ API int iotcon_remote_resource_stop_caching(iotcon_remote_resource_h resource)
 			ERR("icl_ioty_remote_resource_stop_caching() Fail(%d)", ret);
 			return ret;
 		}
+		icl_remote_resource_unref(resource);
 		break;
 	default:
 		ERR("Invalid Connectivity Type(%d)", connectivity_type);
@@ -102,9 +115,9 @@ API int iotcon_remote_resource_get_cached_representation(
 	RETV_IF(false == ic_utils_check_ocf_feature(), IOTCON_ERROR_NOT_SUPPORTED);
 	RETV_IF(NULL == resource, IOTCON_ERROR_INVALID_PARAMETER);
 	RETV_IF(NULL == representation, IOTCON_ERROR_INVALID_PARAMETER);
-	WARN_IF(NULL == resource->cached_repr, "No Cached Representation");
+	WARN_IF(NULL == resource->caching.repr, "No Cached Representation");
 
-	*representation = resource->cached_repr;
+	*representation = resource->caching.repr;
 
 	return IOTCON_ERROR_NONE;
 }

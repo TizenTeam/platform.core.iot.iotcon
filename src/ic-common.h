@@ -22,7 +22,6 @@
 #define IC_INT64_TO_POINTER(i) ((void*)(intptr_t)(i))
 #define IC_POINTER_TO_INT64(p) ((int64_t)(intptr_t)(p))
 
-#define IC_REMOTE_RESOURCE_DEFAULT_TIME_INTERVAL 10 /* 10 sec */
 #define IC_PRESENCE_TTL_SECONDS_DEFAULT 60 /* 60 sec */
 #define IC_PRESENCE_TTL_SECONDS_MAX (60 * 60 * 24) /* 60 sec/min * 60 min/hr * 24 hr/day */
 

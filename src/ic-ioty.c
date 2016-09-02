@@ -48,9 +48,6 @@
 #include "ic-cbor.h"
 
 static bool icl_state;
-static int icl_remote_resource_time_interval = IC_REMOTE_RESOURCE_DEFAULT_TIME_INTERVAL;
-static GHashTable *icl_monitoring_table;
-static GHashTable *icl_caching_table;
 static char icl_svr_db_file[PATH_MAX];
 static OCPersistentStorage icl_ioty_ps;
 
@@ -1140,151 +1137,158 @@ int icl_ioty_remote_resource_delete(iotcon_remote_resource_h resource,
 	return IOTCON_ERROR_NONE;
 }
 
-static void _icl_ioty_monitoring_get_cb(iotcon_remote_resource_h resource,
+
+static void _icl_ioty_encap_get_cb(iotcon_remote_resource_h resource,
 		iotcon_error_e err,
 		iotcon_request_type_e request_type,
 		iotcon_response_h response,
 		void *user_data)
 {
+	int ret;
+	iotcon_representation_h repr;
 	iotcon_remote_resource_state_e state;
-	icl_monitoring_container_s *cb_container = user_data;
 
 	RET_IF(NULL == resource);
 	RET_IF(IOTCON_ERROR_NONE == err && NULL == response);
 
-	if (cb_container->is_destroyed) {
-		DBG("cb_container already destroyed");
-		icl_destroy_monitoring_container(cb_container);
-		return;
+	/* MONITORING */
+	if (resource->monitoring.presence) {
+		switch (err) {
+		case IOTCON_ERROR_NONE:
+			state = (IOTCON_RESPONSE_OK == response->result) ?
+				IOTCON_REMOTE_RESOURCE_ALIVE : IOTCON_REMOTE_RESOURCE_LOST_SIGNAL;
+			break;
+		default:
+			state = IOTCON_REMOTE_RESOURCE_LOST_SIGNAL;
+		}
+
+		if (state != resource->monitoring.state) {
+			resource->monitoring.cb(resource, state, resource->monitoring.user_data);
+			resource->monitoring.state = state;
+		}
 	}
 
-	if (IOTCON_ERROR_NONE != err) {
-		state = IOTCON_REMOTE_RESOURCE_LOST_SIGNAL;
-	} else {
-		state = (IOTCON_RESPONSE_OK == response->result) ?
-			IOTCON_REMOTE_RESOURCE_ALIVE : IOTCON_REMOTE_RESOURCE_LOST_SIGNAL;
-	}
+	/* CACHING */
+	if (resource->caching.observe) {
+		switch (err) {
+		case IOTCON_ERROR_NONE:
+			repr = response->repr;
+			break;
+		default:
+			WARN("iotcon_remote_resource_get() Fail(%d)", err);
+			repr = NULL;
+		}
 
-	if (state != cb_container->state) {
-		cb_container->cb(cb_container->resource, state, cb_container->user_data);
-		cb_container->state = state;
+		ret = icl_representation_compare(resource->caching.repr, repr);
+		if (IC_EQUAL != ret) { /* updated */
+			if (resource->caching.repr)
+				iotcon_representation_destroy(resource->caching.repr);
+			resource->caching.repr = repr;
+			if (response)
+				response->repr = NULL;
+
+			if (resource->caching.cb)
+				resource->caching.cb(resource, repr, resource->caching.user_data);
+		}
 	}
 }
 
-static gboolean _icl_ioty_monitoring_idle_cb(gpointer p)
+
+static gboolean _icl_ioty_encap_timeout_cb(gpointer p)
 {
 	int ret;
-	icl_monitoring_container_s *cb_container = p;
+	iotcon_remote_resource_h resource = p;
 
-	RETV_IF(NULL == cb_container, G_SOURCE_REMOVE);
+	RETV_IF(NULL == resource, G_SOURCE_REMOVE);
 
 	/* get */
-	ret = icl_ioty_remote_resource_get(cb_container->resource, NULL,
-			_icl_ioty_monitoring_get_cb, cb_container);
+	ret = icl_ioty_remote_resource_get(resource, NULL, _icl_ioty_encap_get_cb, NULL);
 	if (IOTCON_ERROR_NONE != ret) {
 		ERR("icl_ioty_remote_resource_get() Fail(%d)", ret);
 		return G_SOURCE_REMOVE;
 	}
 
 	/* get timeout */
-	if (cb_container->timeout)
-		g_source_remove(cb_container->timeout);
-	cb_container->timeout = g_timeout_add_seconds(icl_remote_resource_time_interval,
-			_icl_ioty_monitoring_idle_cb, cb_container);
+	if (resource->timer_id)
+		g_source_remove(resource->timer_id);
+
+	resource->timer_id = g_timeout_add_seconds(resource->checking_interval,
+			_icl_ioty_encap_timeout_cb, resource);
 
 	return G_SOURCE_REMOVE;
 }
 
-static void _icl_ioty_monitoring_presence_cb(iotcon_presence_h presence,
-		iotcon_error_e err, iotcon_presence_response_h response, void *user_data)
+
+int icl_ioty_remote_resource_set_checking_interval(iotcon_remote_resource_h resource,
+		int time_interval)
 {
-	icl_monitoring_container_s *cb_container = user_data;
+	int ret;
 
-	RET_IF(NULL == cb_container);
+	if (resource->timer_id)
+		g_source_remove(resource->timer_id);
 
-	if (IOTCON_PRESENCE_OK == response->result &&
-			IOTCON_PRESENCE_RESOURCE_DESTROYED != response->trigger)
-		return;
-
-	g_idle_add(_icl_ioty_monitoring_idle_cb, cb_container);
-}
-
-static void _icl_ioty_remote_resource_monitoring_table_insert(
-		iotcon_remote_resource_h resource, icl_monitoring_container_s *cb_container)
-{
-	RET_IF(NULL == resource);
-	RET_IF(NULL == cb_container);
-
-	if (NULL == icl_monitoring_table) {
-		icl_monitoring_table = g_hash_table_new_full(g_direct_hash, g_direct_equal, NULL,
-				icl_destroy_monitoring_container);
+	ret = icl_ioty_remote_resource_get(resource, NULL, _icl_ioty_encap_get_cb, NULL);
+	if (IOTCON_ERROR_NONE != ret) {
+		ERR("icl_ioty_remote_resource_get() Fail(%d)", ret);
+		return ret;
 	}
-	g_hash_table_insert(icl_monitoring_table, resource, cb_container);
-}
 
-static int icl_remote_resource_monitoring_table_remove(
-		iotcon_remote_resource_h resource)
-{
-	RETV_IF(NULL == resource, IOTCON_ERROR_INVALID_PARAMETER);
-
-	if (NULL == icl_monitoring_table)
-		return IOTCON_ERROR_NO_DATA;
-
-	if (NULL == g_hash_table_lookup(icl_monitoring_table, resource))
-		return IOTCON_ERROR_NO_DATA;
-
-	g_hash_table_remove(icl_monitoring_table, resource);
+	resource->timer_id = g_timeout_add_seconds(time_interval, _icl_ioty_encap_timeout_cb,
+			resource);
 
 	return IOTCON_ERROR_NONE;
 }
 
+
+static void _icl_ioty_monitoring_presence_cb(iotcon_presence_h presence,
+		iotcon_error_e err, iotcon_presence_response_h response, void *user_data)
+{
+	iotcon_remote_resource_h resource = user_data;
+
+	RET_IF(NULL == resource);
+
+	if (IOTCON_PRESENCE_OK == response->result
+			&& IOTCON_PRESENCE_RESOURCE_DESTROYED != response->trigger)
+		return;
+
+	_icl_ioty_encap_timeout_cb(resource);
+}
 
 int icl_ioty_remote_resource_start_monitoring(iotcon_remote_resource_h resource,
 		iotcon_remote_resource_state_changed_cb cb, void *user_data)
 {
 	FN_CALL;
 	int ret;
-	iotcon_presence_h presence;
-	icl_monitoring_container_s *cb_container;
 
 	RETV_IF(NULL == resource, IOTCON_ERROR_INVALID_PARAMETER);
 	RETV_IF(NULL == cb, IOTCON_ERROR_INVALID_PARAMETER);
 
-	cb_container = calloc(1, sizeof(icl_monitoring_container_s));
-	if (NULL == cb_container) {
-		ERR("calloc() Fail(%d)", errno);
-		return IOTCON_ERROR_OUT_OF_MEMORY;
-	}
-	cb_container->state = IOTCON_REMOTE_RESOURCE_ALIVE;
-	cb_container->resource = resource;
-	icl_remote_resource_ref(cb_container->resource);
-	cb_container->cb = cb;
-	cb_container->user_data = user_data;
+	resource->monitoring.state = IOTCON_REMOTE_RESOURCE_ALIVE;
+	resource->monitoring.cb = cb;
+	resource->monitoring.user_data = user_data;
 
 	/* presence */
-	ret = icl_ioty_add_presence_cb(resource->host_address, resource->connectivity_type,
-			NULL, _icl_ioty_monitoring_presence_cb, cb_container, &presence);
+	ret = icl_ioty_add_presence_cb(resource->host_address,
+			resource->connectivity_type,
+			NULL,
+			_icl_ioty_monitoring_presence_cb,
+			resource,
+			&resource->monitoring.presence);
 	if (IOTCON_ERROR_NONE != ret) {
 		ERR("icl_ioty_add_presence_cb() Fail(%d)", ret);
-		icl_destroy_monitoring_container(cb_container);
 		return ret;
 	}
-	cb_container->presence = presence;
 
 	/* get */
-	ret = icl_ioty_remote_resource_get(resource, NULL, _icl_ioty_monitoring_get_cb,
-			cb_container);
+	if (resource->caching.observe)
+		return IOTCON_ERROR_NONE;
+
+	ret = icl_ioty_remote_resource_set_checking_interval(resource,
+			resource->checking_interval);
 	if (IOTCON_ERROR_NONE != ret) {
-		ERR("icl_ioty_remote_resource_get() Fail(%d)", ret);
-		icl_destroy_monitoring_container(cb_container);
+		ERR("icl_ioty_remote_resource_set_checking_interval() Fail(%d)", ret);
 		return ret;
 	}
-
-	/* get timeout */
-	cb_container->timeout = g_timeout_add_seconds(icl_remote_resource_time_interval,
-			_icl_ioty_monitoring_idle_cb, cb_container);
-
-	_icl_ioty_remote_resource_monitoring_table_insert(resource, cb_container);
 
 	return IOTCON_ERROR_NONE;
 }
@@ -1295,121 +1299,28 @@ int icl_ioty_remote_resource_stop_monitoring(iotcon_remote_resource_h resource)
 
 	RETV_IF(NULL == resource, IOTCON_ERROR_INVALID_PARAMETER);
 
-	ret = icl_remote_resource_monitoring_table_remove(resource);
-	if (IOTCON_ERROR_NONE != ret) {
-		ERR("icl_remote_resource_monitoring_table_remove() Fail(%d)", ret);
-		return IOTCON_ERROR_INVALID_PARAMETER;
+	if (0 == resource->caching.observe && resource->timer_id) {
+		g_source_remove(resource->timer_id);
+		resource->timer_id = 0;
 	}
+
+	ret = icl_ioty_remove_presence_cb(resource->monitoring.presence);
+	if (IOTCON_ERROR_NONE != ret) {
+		ERR("icl_ioty_remove_presence_cb() Fail(%d)", ret);
+		return ret;
+	}
+	resource->monitoring.presence = NULL;
 
 	return IOTCON_ERROR_NONE;
-}
-
-static void _icl_ioty_caching_get_cb(iotcon_remote_resource_h resource,
-		iotcon_error_e err,
-		iotcon_request_type_e request_type,
-		iotcon_response_h response,
-		void *user_data)
-{
-	FN_CALL;
-	int ret;
-	iotcon_representation_h repr;
-	icl_caching_container_s *cb_container = user_data;
-
-	RET_IF(NULL == resource);
-	RET_IF(IOTCON_ERROR_NONE == err && NULL == response);
-
-	if (cb_container->is_destroyed) {
-		DBG("cb_container already destroyed");
-		icl_destroy_caching_container(cb_container);
-		return;
-	}
-
-	if (IOTCON_ERROR_NONE != err) {
-		WARN("iotcon_remote_resource_get Fail(%d)", err);
-		repr = NULL;
-	} else {
-		repr = response->repr;
-	}
-
-	ret = icl_representation_compare(resource->cached_repr, repr);
-	if (IC_EQUAL != ret) { /* updated */
-		if (resource->cached_repr)
-			iotcon_representation_destroy(resource->cached_repr);
-		resource->cached_repr = repr;
-		if (response)
-			response->repr = NULL;
-
-		if (cb_container->cb)
-			cb_container->cb(resource, resource->cached_repr, cb_container->user_data);
-	}
-}
-
-static gboolean _icl_ioty_caching_idle_cb(gpointer p)
-{
-	int ret;
-	icl_caching_container_s *cb_container = p;
-
-	RETV_IF(NULL == cb_container, G_SOURCE_REMOVE);
-
-	/* get */
-	ret = icl_ioty_remote_resource_get(cb_container->resource, NULL,
-			_icl_ioty_caching_get_cb, cb_container);
-	if (IOTCON_ERROR_NONE != ret) {
-		ERR("icl_ioty_remote_resource_get() Fail(%d)", ret);
-		return G_SOURCE_REMOVE;
-	}
-
-	/* get timeout */
-	if (cb_container->timeout)
-		g_source_remove(cb_container->timeout);
-	cb_container->timeout = g_timeout_add_seconds(icl_remote_resource_time_interval,
-			_icl_ioty_caching_idle_cb, cb_container);
-
-	return G_SOURCE_REMOVE;
 }
 
 static void _icl_ioty_caching_observe_cb(iotcon_remote_resource_h resource,
 		iotcon_error_e err, int sequence_number, iotcon_response_h response, void *user_data)
 {
-	FN_CALL;
-	icl_caching_container_s *cb_container = user_data;
-
 	RET_IF(NULL == resource);
-	RET_IF(NULL == cb_container);
 
-	g_idle_add(_icl_ioty_caching_idle_cb, cb_container);
+	_icl_ioty_encap_timeout_cb(resource);
 }
-
-static void _icl_ioty_remote_resource_caching_table_insert(
-		iotcon_remote_resource_h resource, icl_caching_container_s *cb_container)
-{
-	RET_IF(NULL == resource);
-	RET_IF(NULL == cb_container);
-
-	if (NULL == icl_caching_table) {
-		icl_caching_table = g_hash_table_new_full(g_direct_hash, g_direct_equal, NULL,
-				icl_destroy_caching_container);
-	}
-	g_hash_table_insert(icl_caching_table, resource, cb_container);
-}
-
-static int _icl_ioty_remote_resource_caching_table_remove(
-		iotcon_remote_resource_h resource)
-{
-	RETV_IF(NULL == resource, IOTCON_ERROR_INVALID_PARAMETER);
-
-	if (NULL == icl_caching_table)
-		return IOTCON_ERROR_NO_DATA;
-
-	if (NULL == g_hash_table_lookup(icl_caching_table, resource))
-		return IOTCON_ERROR_NO_DATA;
-
-	g_hash_table_remove(icl_caching_table, resource);
-
-	return IOTCON_ERROR_NONE;
-}
-
-
 
 int icl_ioty_remote_resource_start_caching(iotcon_remote_resource_h resource,
 		iotcon_remote_resource_cached_representation_changed_cb cb, void *user_data)
@@ -1417,32 +1328,31 @@ int icl_ioty_remote_resource_start_caching(iotcon_remote_resource_h resource,
 	FN_CALL;
 	int ret;
 	OCDoHandle handle = NULL;
-	icl_caching_container_s *cb_container;
 
 	RETV_IF(NULL == resource, IOTCON_ERROR_INVALID_PARAMETER);
 
-	cb_container = calloc(1, sizeof(icl_caching_container_s));
-	if (NULL == cb_container) {
-		ERR("calloc() Fail(%d)", errno);
-		return IOTCON_ERROR_OUT_OF_MEMORY;
-	}
-	cb_container->resource = resource;
-	icl_remote_resource_ref(cb_container->resource);
-	cb_container->cb = cb;
-	cb_container->user_data = user_data;
+	resource->caching.cb = cb;
+	resource->caching.user_data = user_data;
 
+	/* observe */
 	ret = _icl_ioty_remote_resource_observe(resource, IOTCON_OBSERVE_IGNORE_OUT_OF_ORDER,
-			NULL, _icl_ioty_caching_observe_cb, cb_container, &handle);
+			NULL, _icl_ioty_caching_observe_cb, NULL, &handle);
 	if (IOTCON_ERROR_NONE != ret) {
 		ERR("_icl_ioty_remote_resource_observe() Fail(%d)", ret);
-		icl_destroy_caching_container(cb_container);
 		return ret;
 	}
-	cb_container->observe_handle = IC_POINTER_TO_INT64(handle);
+	resource->caching.observe = IC_POINTER_TO_INT64(handle);
 
-	_icl_ioty_caching_idle_cb(cb_container);
+	/* get */
+	if (resource->monitoring.presence)
+		return IOTCON_ERROR_NONE;
 
-	_icl_ioty_remote_resource_caching_table_insert(resource, cb_container);
+	ret = icl_ioty_remote_resource_set_checking_interval(resource,
+			resource->checking_interval);
+	if (IOTCON_ERROR_NONE != ret) {
+		ERR("icl_ioty_remote_resource_set_checking_interval() Fail(%d)", ret);
+		return ret;
+	}
 
 	return IOTCON_ERROR_NONE;
 }
@@ -1453,11 +1363,18 @@ int icl_ioty_remote_resource_stop_caching(iotcon_remote_resource_h resource)
 
 	RETV_IF(NULL == resource, IOTCON_ERROR_INVALID_PARAMETER);
 
-	ret = _icl_ioty_remote_resource_caching_table_remove(resource);
+	if (NULL == resource->monitoring.presence && resource->timer_id) {
+		g_source_remove(resource->timer_id);
+		resource->timer_id = 0;
+	}
+
+	ret = icl_ioty_remote_resource_observe_cancel(resource,
+			resource->caching.observe);
 	if (IOTCON_ERROR_NONE != ret) {
-		ERR("_icl_ioty_remote_resource_caching_table_remove() Fail(%d)", ret);
+		ERR("icl_ioty_remote_resource_observe_cancel() Fail(%d)", ret);
 		return IOTCON_ERROR_INVALID_PARAMETER;
 	}
+	resource->caching.observe = 0;
 
 	return IOTCON_ERROR_NONE;
 }
@@ -2014,48 +1931,3 @@ int icl_ioty_response_send(iotcon_response_h response_handle)
 	return IOTCON_ERROR_NONE;
 }
 
-static void _icl_ioty_caching_table_update(gpointer key, gpointer value,
-		gpointer user_data)
-{
-	icl_caching_container_s *cb_container = value;
-
-	RET_IF(NULL == cb_container);
-
-	g_source_remove(cb_container->timeout);
-	cb_container->timeout = g_timeout_add_seconds(icl_remote_resource_time_interval,
-			_icl_ioty_caching_idle_cb, cb_container);
-}
-
-static void _icl_ioty_monitoring_table_update(gpointer key, gpointer value,
-		gpointer user_data)
-{
-	icl_monitoring_container_s *cb_container = value;
-
-	RET_IF(NULL == cb_container);
-
-	g_source_remove(cb_container->timeout);
-	cb_container->timeout = g_timeout_add_seconds(icl_remote_resource_time_interval,
-			_icl_ioty_monitoring_idle_cb, cb_container);
-}
-
-int icl_ioty_remote_resource_set_time_interval(int time_interval)
-{
-	icl_remote_resource_time_interval = time_interval;
-
-	if (icl_caching_table)
-		g_hash_table_foreach(icl_caching_table, _icl_ioty_caching_table_update, NULL);
-
-	if (icl_monitoring_table)
-		g_hash_table_foreach(icl_monitoring_table, _icl_ioty_monitoring_table_update, NULL);
-
-	return IOTCON_ERROR_NONE;
-}
-
-int icl_ioty_remote_resource_get_time_interval(int *time_interval)
-{
-	RETV_IF(NULL == time_interval, IOTCON_ERROR_INVALID_PARAMETER);
-
-	*time_interval = icl_remote_resource_time_interval;
-
-	return IOTCON_ERROR_NONE;
-}
