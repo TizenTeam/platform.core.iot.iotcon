@@ -634,9 +634,9 @@ int icl_ioty_add_presence_cb(const char *host_address,
 	else
 		address = host_address;
 
-	if (IC_EQUAL == strncmp(IC_COAPS, host_address, strlen(IC_COAPS)))
+	if (IC_EQUAL == strncmp(IC_COAPS, address, strlen(IC_COAPS)))
 		index = strlen(IC_COAPS);
-	else if (IC_EQUAL == strncmp(IC_COAP, host_address , strlen(IC_COAP)))
+	else if (IC_EQUAL == strncmp(IC_COAP, address, strlen(IC_COAP)))
 		index = strlen(IC_COAP);
 
 	snprintf(uri, sizeof(uri), "%s%s", &address[index], OC_RSRVD_PRESENCE_URI);
