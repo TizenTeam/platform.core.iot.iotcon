@@ -326,7 +326,7 @@ int icl_ioty_find_resource(const char *host_address,
 {
 	FN_CALL;
 	int ret, timeout;
-	char *coap_str;
+	char *coap_str = NULL;
 	char *full_uri;
 	char uri[PATH_MAX] = {0};
 	icl_cb_s *cb_data;
@@ -405,7 +405,7 @@ int icl_ioty_find_device_info(const char *host_address,
 		void *user_data)
 {
 	int ret, timeout;
-	char *coap_str;
+	char *coap_str = NULL;
 	char *full_uri;
 	char uri[PATH_MAX] = {0};
 	icl_cb_s *cb_data = NULL;
@@ -480,7 +480,7 @@ int icl_ioty_find_platform_info(const char *host_address,
 		void *user_data)
 {
 	int ret, timeout;
-	char *coap_str;
+	char *coap_str = NULL;
 	char *full_uri;
 	char uri[PATH_MAX] = {0};
 	icl_cb_s *cb_data = NULL;
