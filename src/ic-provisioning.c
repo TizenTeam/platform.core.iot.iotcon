@@ -518,6 +518,22 @@ static OicSecAcl_t* _provisioning_convert_acl(iotcon_provisioning_device_h devic
 		resource->href = ic_utils_strdup(uri_path);
 
 		// TODO: resource types & resource interfaces
+		// temp code
+		resource->types = calloc(1, sizeof(char*));
+		if (NULL == resource->types) {
+			ERR("calloc() Fail(%d)", errno);
+			return NULL;
+		}
+		resource->types[0] = strdup(" ");
+		resource->typeLen = 1;
+
+		resource->interfaces = calloc(1, sizeof(char*));
+		if (NULL == resource->interfaces) {
+			ERR("calloc() Fail(%d)", errno);
+			return NULL;
+		}
+		resource->interfaces[0] = strdup(OC_RSRVD_INTERFACE_DEFAULT);
+		resource->interfaceLen = 1;
 
 		_provisioning_ace_add_resource(ace, resource);
 	}
