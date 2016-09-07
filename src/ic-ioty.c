@@ -336,7 +336,8 @@ int icl_ioty_find_resource(const char *host_address,
 
 	RETV_IF(NULL == cb, IOTCON_ERROR_INVALID_PARAMETER);
 
-	if (IC_EQUAL != strncmp(IC_COAP_PREFIX, host_address, strlen(IC_COAP_PREFIX)))
+	if (host_address
+			&& IC_EQUAL != strncmp(IC_COAP_PREFIX, host_address, strlen(IC_COAP_PREFIX)))
 		coap_str = IC_COAPS;
 
 	if (NULL == host_address) {
@@ -415,7 +416,8 @@ int icl_ioty_find_device_info(const char *host_address,
 
 	RETV_IF(NULL == cb, IOTCON_ERROR_INVALID_PARAMETER);
 
-	if (IC_EQUAL != strncmp(IC_COAP_PREFIX, host_address, strlen(IC_COAP_PREFIX)))
+	if (host_address
+			&& IC_EQUAL != strncmp(IC_COAP_PREFIX, host_address, strlen(IC_COAP_PREFIX)))
 		coap_str = IC_COAP;
 
 	if (NULL == host_address)
@@ -490,7 +492,8 @@ int icl_ioty_find_platform_info(const char *host_address,
 
 	RETV_IF(NULL == cb, IOTCON_ERROR_INVALID_PARAMETER);
 
-	if (IC_EQUAL != strncmp(IC_COAP_PREFIX, host_address, strlen(IC_COAP_PREFIX)))
+	if (host_address
+			&& IC_EQUAL != strncmp(IC_COAP_PREFIX, host_address, strlen(IC_COAP_PREFIX)))
 		coap_str = IC_COAP;
 
 	if (NULL == host_address)
