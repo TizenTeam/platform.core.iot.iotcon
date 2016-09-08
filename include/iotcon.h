@@ -195,6 +195,68 @@ int iotcon_polling_set_interval(int interval);
 int iotcon_polling_invoke(void);
 
 /**
+ * @brief Specifies the type of function passed to iotcon_add_generated_pin_cb().
+ * @details When a provisioning tool calls the function for registering this device,
+ * it is called, immediately.
+ *
+ * @since_tizen 3.0
+ *
+ * @param[in] pin The pin number which is generated automatically
+ * @param[in] user_data The user data to pass to the function
+ *
+ * @pre The callback must be registered using iotcon_add_generated_pin_cb()
+ *
+ * @see iotcon_add_generated_pin_cb()
+ * @see iotcon_remove_generated_pin_cb()
+ */
+typedef void (*iotcon_generated_pin_cb)(const char *pin, void *user_data);
+
+/**
+ * @brief Adds callback to show pin number which is generated automatically.
+ * @details When a provisioning tool tries to register this device using random pin based\n
+ * ownership transfer method, it makes pin number which is generated automatically be shown.
+ *
+ * @since_tizen 3.0
+ *
+ * @param[in] cb The callback function to invoke
+ * @param[in] user_data The user data to pass to the function
+ *
+ * @return 0 on success, otherwise a negative error value.
+ * @retval #IOTCON_ERROR_NONE Successful
+ * @retval #IOTCON_ERROR_NOT_SUPPORTED  Not supported
+ * @retval #IOTCON_ERROR_INVALID_PARAMETER Invalid parameter
+ * @retval #IOTCON_ERROR_ALREADY Already done
+ * @retval #IOTCON_ERROR_OUT_OF_MEMORY Out of memory
+ *
+ * @pre iotcon_initialize() should be called to initialize.
+ * @post When the device is registered by provisioning tool, iotcon_generated_pin_cb() will be called.
+ *
+ * @see iotcon_remove_generated_pin_cb()
+ */
+int iotcon_add_generated_pin_cb(iotcon_generated_pin_cb cb, void *user_data);
+
+/**
+ * @brief Removes callback to show pin number which is generated automatically.
+ * @details If this function is called, @a cb will be not called anymore.\n
+ * For removing @a cb that is used at iotcon_add_generated_pin_cb() should be used.
+ *
+ * @since_tizen 3.0
+ *
+ * @param[in] cb The callback function to invoke
+ *
+ * @return 0 on success, otherwise a negative error value.
+ * @retval #IOTCON_ERROR_NONE Successful
+ * @retval #IOTCON_ERROR_NOT_SUPPORTED  Not supported
+ * @retval #IOTCON_ERROR_INVALID_PARAMETER Invalid parameter
+ * @retval #IOTCON_ERROR_NO_DATA No data available
+ *
+ * @pre iotcon_initialize() should be called to initialize.
+ *
+ * @see iotcon_add_generated_pin_cb()
+ */
+int iotcon_remove_generated_pin_cb(iotcon_generated_pin_cb cb);
+
+/**
  * @}
  */
 

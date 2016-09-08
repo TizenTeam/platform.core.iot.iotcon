@@ -125,4 +125,34 @@ API int iotcon_set_timeout(int timeout_seconds)
 	return IOTCON_ERROR_NONE;
 }
 
+API int iotcon_add_generated_pin_cb(iotcon_generated_pin_cb cb, void *user_data)
+{
+	int ret;
 
+	RETV_IF(false == ic_utils_check_ocf_feature(), IOTCON_ERROR_NOT_SUPPORTED);
+	RETV_IF(NULL == cb, IOTCON_ERROR_INVALID_PARAMETER);
+
+	ret = icl_ioty_add_generated_pin_cb(cb, user_data);
+	if (IOTCON_ERROR_NONE != ret) {
+		ERR("icl_ioty_set_generate_pin_cb() Fail(%d)", ret);
+		return ret;
+	}
+
+	return IOTCON_ERROR_NONE;
+}
+
+API int iotcon_remove_generated_pin_cb(iotcon_generated_pin_cb cb)
+{
+	int ret;
+
+	RETV_IF(false == ic_utils_check_ocf_feature(), IOTCON_ERROR_NOT_SUPPORTED);
+	RETV_IF(NULL == cb, IOTCON_ERROR_INVALID_PARAMETER);
+
+	ret = icl_ioty_remove_generated_pin_cb(cb);
+	if (IOTCON_ERROR_NONE != ret) {
+		ERR("icl_ioty_remove_generated_pin_cb() Fail(%d)", ret);
+		return ret;
+	}
+
+	return IOTCON_ERROR_NONE;
+}

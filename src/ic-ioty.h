@@ -46,6 +46,8 @@ void icl_ioty_deinit(pthread_t thread);
 int icl_ioty_init(pthread_t *out_thread);
 
 int icl_ioty_set_persistent_storage(const char *file_path, bool is_pt);
+int icl_ioty_add_generated_pin_cb(iotcon_generated_pin_cb cb, void *user_data);
+int icl_ioty_remove_generated_pin_cb(iotcon_generated_pin_cb cb);
 
 int icl_ioty_set_device_info(const char *device_name);
 int icl_ioty_set_platform_info();

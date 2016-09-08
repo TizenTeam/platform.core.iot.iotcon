@@ -47,9 +47,16 @@
 #include "ic-ioty-ocprocess.h"
 #include "ic-cbor.h"
 
+typedef struct {
+	iotcon_generated_pin_cb cb;
+	void *user_data;
+} icl_generated_pin_cb_container_s;
+
 static bool icl_state;
+static bool icl_is_set_generated_pin_cb;
 static char icl_svr_db_file[PATH_MAX];
 static OCPersistentStorage icl_ioty_ps;
+static GList *icl_generated_pin_cb_list;
 
 void icl_ioty_deinit(pthread_t thread)
 {
@@ -131,18 +138,84 @@ int icl_ioty_set_persistent_storage(const char *file_path, bool is_pt)
 	return IOTCON_ERROR_NONE;
 }
 
-void show_pin(char *pin, size_t length)
+static void _generated_pin_cb(char *pin, size_t length)
 {
-	FN_CALL;
+	GList *node;
+	icl_generated_pin_cb_container_s *container;
 
+	if (NULL == pin) {
+		ERR("Invalid Pin Number");
+		return;
+	}
 	INFO("PIN : %s", pin);
+
+	for (node = icl_generated_pin_cb_list; node; node = node->next) {
+		container = node->data;
+		if (container->cb)
+			container->cb(pin, container->user_data);
+	}
 }
 
-int icl_ioty_set_generate_pin_cb()
+static icl_generated_pin_cb_container_s* _find_generated_pin_cb(
+		iotcon_generated_pin_cb cb)
 {
-	FN_CALL;
+	GList *node;
+	icl_generated_pin_cb_container_s *container;
 
-	SetGeneratePinCB(&show_pin);
+	for (node = icl_generated_pin_cb_list; node; node = node->next) {
+		container = node->data;
+		if (cb == container->cb)
+			return container;
+	}
+
+	return NULL;
+}
+
+int icl_ioty_add_generated_pin_cb(iotcon_generated_pin_cb cb, void *user_data)
+{
+	icl_generated_pin_cb_container_s *container;
+
+	if (_find_generated_pin_cb(cb)) {
+		ERR("This callback is already registered.");
+		return IOTCON_ERROR_ALREADY;
+	}
+
+	container = calloc(1, sizeof(icl_generated_pin_cb_container_s));
+	if (NULL == container) {
+		ERR("calloc() Fail(%d)", errno);
+		return IOTCON_ERROR_OUT_OF_MEMORY;
+	}
+	container->cb = cb;
+	container->user_data = user_data;
+
+	icl_generated_pin_cb_list = g_list_append(icl_generated_pin_cb_list, container);
+
+	if (false == icl_is_set_generated_pin_cb) {
+		SetGeneratePinCB(&_generated_pin_cb);
+		icl_is_set_generated_pin_cb = true;
+	}
+
+	return IOTCON_ERROR_NONE;
+}
+
+int icl_ioty_remove_generated_pin_cb(iotcon_generated_pin_cb cb)
+{
+	icl_generated_pin_cb_container_s *container;
+
+	container = _find_generated_pin_cb(cb);
+	if (NULL == container) {
+		ERR("This callback is not registered");
+		return IOTCON_ERROR_NO_DATA;
+	}
+
+	if (1 == g_list_length(icl_generated_pin_cb_list)) {
+		ERR("It is required at least one function");
+		return IOTCON_ERROR_INVALID_PARAMETER;
+	}
+
+	icl_generated_pin_cb_list = g_list_remove(icl_generated_pin_cb_list, container);
+
+	free(container);
 
 	return IOTCON_ERROR_NONE;
 }
@@ -179,9 +252,6 @@ int icl_ioty_init(pthread_t *out_thread)
 		ERR("OCInit() Fail(%d)", ret);
 		return ic_ioty_parse_oic_error(ret);
 	}
-
-	// TODO: temp code
-	icl_ioty_set_generate_pin_cb();
 
 	icl_ioty_ocprocess_start();
 
