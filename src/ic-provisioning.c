@@ -522,6 +522,8 @@ static OicSecAcl_t* _provisioning_convert_acl(iotcon_provisioning_device_h devic
 		resource->types = calloc(1, sizeof(char*));
 		if (NULL == resource->types) {
 			ERR("calloc() Fail(%d)", errno);
+			free(resource);
+			OCDeleteACLList(oic_acl);
 			return NULL;
 		}
 		resource->types[0] = strdup(" ");
@@ -530,6 +532,10 @@ static OicSecAcl_t* _provisioning_convert_acl(iotcon_provisioning_device_h devic
 		resource->interfaces = calloc(1, sizeof(char*));
 		if (NULL == resource->interfaces) {
 			ERR("calloc() Fail(%d)", errno);
+			free(resource->types[0]);
+			free(resource->types);
+			free(resource);
+			OCDeleteACLList(oic_acl);
 			return NULL;
 		}
 		resource->interfaces[0] = strdup(OC_RSRVD_INTERFACE_DEFAULT);
