@@ -29,7 +29,12 @@
 
 #define IC_COAP "coap://"
 #define IC_COAPS "coaps://"
+#define IC_COAP_TCP "coap+tcp://"
+#define IC_COAPS_TCP "coaps+tcp://"
 #define IC_COAP_PREFIX "coap"
 #define IC_MULTICAST_ADDRESS "224.0.1.187:5683"
+
+/* IOTCON_CONNECTIVITY_PREFER_UDP is the first option for connectivity type */
+#define IC_CONNECTIVITY_REMOVE_EXTRA_OPTIONS IOTCON_CONNECTIVITY_PREFER_UDP
 
 #endif /* __IOTCON_INTERNAL_COMMON_H__ */

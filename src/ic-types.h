@@ -24,8 +24,7 @@
 
 typedef struct {
 	icl_cb_s *cb_data;
-	iotcon_remote_resource_h *resource_list;
-	int resource_count;
+	GList *resource_list;
 } icl_find_cb_s;
 
 typedef struct {
@@ -99,9 +98,7 @@ typedef struct {
 } icl_request_container_s;
 
 void icl_destroy_find_cb_data(icl_find_cb_s *cb_data);
-int icl_create_find_cb_data(icl_cb_s *cb_data,
-		iotcon_remote_resource_h *resource_list,
-		int resource_count,
+int icl_create_find_cb_data(icl_cb_s *cb_data, GList *resource_list,
 		icl_find_cb_s **find_callback_data);
 
 void icl_destroy_device_cb_data(icl_device_cb_s *cb_data);

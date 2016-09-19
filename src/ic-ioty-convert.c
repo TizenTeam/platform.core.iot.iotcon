@@ -43,39 +43,57 @@ static int _icl_ioty_fill_oic_rep_payload_value(OCRepPayload *payload,
 		iotcon_attributes_h attributes);
 
 
-OCConnectivityType ic_ioty_convert_connectivity_type(
-		iotcon_connectivity_type_e conn_type)
+OCConnectivityType ic_ioty_convert_connectivity_type(iotcon_connectivity_type_e conn_type,
+		int conn_options)
 {
-	int connectivity_type = conn_type;
+	OCConnectivityType type = 0;
 
-	switch (connectivity_type) {
-	case IOTCON_CONNECTIVITY_IPV4:
-		return CT_ADAPTER_IP | CT_IP_USE_V4;
-	case IOTCON_CONNECTIVITY_IPV6:
-		return CT_ADAPTER_IP | CT_IP_USE_V6;
+	switch (conn_type) {
+	case IOTCON_CONNECTIVITY_IP:
+		if (IC_UTILS_CONNECTIVITY_UDP & conn_options)
+			type |= CT_ADAPTER_IP;
+		else if (IC_UTILS_CONNECTIVITY_TCP & conn_options)
+			type |= CT_ADAPTER_TCP;
+		else
+			type |= CT_DEFAULT;
+
+		if (IC_UTILS_CONNECTIVITY_IPV4 & conn_options)
+			type |= CT_IP_USE_V4;
+		else if (IC_UTILS_CONNECTIVITY_IPV6 & conn_options)
+			type |= CT_IP_USE_V6;
+		else
+			type |= CT_DEFAULT;
+		break;
 	case IOTCON_CONNECTIVITY_ALL:
-		return CT_DEFAULT;
 	default:
-		ERR("Invalid conn_type(%d)", conn_type);
+		type |= CT_DEFAULT;
 	}
-	return CT_DEFAULT;
+
+	return type;
 }
 
 
-static void _ic_ioty_conn_type_to_oic_transport_type(int conn_type,
-		OCTransportAdapter *adapter, OCTransportFlags *flag)
+static void _ic_ioty_conn_type_to_oic_transport_type(iotcon_connectivity_type_e conn_type,
+		int conn_options, OCTransportAdapter *adapter, OCTransportFlags *flag)
 {
 	RET_IF(NULL == adapter);
 	RET_IF(NULL == flag);
 
 	switch (conn_type) {
-	case IOTCON_CONNECTIVITY_IPV4:
-		*adapter = OC_ADAPTER_IP;
-		*flag = OC_IP_USE_V4;
-		break;
-	case IOTCON_CONNECTIVITY_IPV6:
-		*adapter = OC_ADAPTER_IP;
-		*flag = OC_IP_USE_V6;
+	case IOTCON_CONNECTIVITY_IP:
+		if (IC_UTILS_CONNECTIVITY_UDP & conn_options)
+			*adapter = OC_ADAPTER_IP;
+		else if (IC_UTILS_CONNECTIVITY_TCP & conn_options)
+			*adapter = OC_ADAPTER_TCP;
+		else
+			*adapter = OC_DEFAULT_ADAPTER;
+
+		if (IC_UTILS_CONNECTIVITY_IPV4 & conn_options)
+			*flag = OC_IP_USE_V4;
+		else if (IC_UTILS_CONNECTIVITY_IPV6 & conn_options)
+			*flag = OC_IP_USE_V6;
+		else
+			*flag = OC_DEFAULT_FLAGS;
 		break;
 	case IOTCON_CONNECTIVITY_ALL:
 	default:
@@ -85,7 +103,9 @@ static void _ic_ioty_conn_type_to_oic_transport_type(int conn_type,
 }
 
 
-int ic_ioty_convert_connectivity(const char *host_address, int conn_type,
+int ic_ioty_convert_host_address(const char *host_address,
+		iotcon_connectivity_type_e conn_type,
+		int conn_options,
 		OCDevAddr *dev_addr)
 {
 	int index = 0;
@@ -98,27 +118,33 @@ int ic_ioty_convert_connectivity(const char *host_address, int conn_type,
 		index = strlen(IC_COAPS);
 	else if (IC_EQUAL == strncmp(IC_COAP, host_address, strlen(IC_COAP)))
 		index = strlen(IC_COAP);
+	else if (IC_EQUAL == strncmp(IC_COAP_TCP, host_address, strlen(IC_COAP_TCP)))
+		index = strlen(IC_COAP_TCP);
+	else if (IC_EQUAL == strncmp(IC_COAPS_TCP, host_address, strlen(IC_COAPS_TCP)))
+		index = strlen(IC_COAPS_TCP);
 
 	snprintf(host, sizeof(host), "%s", &host_address[index]);
 
 	switch (conn_type) {
-	case IOTCON_CONNECTIVITY_IPV4:
-		dev_host = strtok_r(host, ":", &ptr);
-		snprintf(dev_addr->addr, sizeof(dev_addr->addr), "%s", dev_host);
-		dev_addr->port = atoi(strtok_r(NULL, ":", &ptr));
+	case IOTCON_CONNECTIVITY_IP:
+		if (IC_UTILS_CONNECTIVITY_IPV4 & conn_options) {
+			dev_host = strtok_r(host, ":", &ptr);
+			snprintf(dev_addr->addr, sizeof(dev_addr->addr), "%s", dev_host);
+			dev_addr->port = atoi(strtok_r(NULL, ":", &ptr));
+		} else if (IC_UTILS_CONNECTIVITY_IPV6 & conn_options) {
+			dev_host = strtok_r(host, "]", &ptr);
+			snprintf(dev_addr->addr, sizeof(dev_addr->addr), "%s", dev_host + 1);
+			dev_addr->port = atoi(strtok_r(NULL, ":", &ptr));
+		}
 		break;
-	case IOTCON_CONNECTIVITY_IPV6:
-		dev_host = strtok_r(host, "]", &ptr);
-		snprintf(dev_addr->addr, sizeof(dev_addr->addr), "%s", dev_host + 1);
-		dev_addr->port = atoi(strtok_r(NULL, ":", &ptr));
-		break;
+	case IOTCON_CONNECTIVITY_ALL:
 	default:
 		ERR("Invalid Connectivity Type(%d)", conn_type);
 		return IOTCON_ERROR_INVALID_PARAMETER;
 	}
 
-	_ic_ioty_conn_type_to_oic_transport_type(conn_type, &(dev_addr->adapter),
-			&(dev_addr->flags));
+	_ic_ioty_conn_type_to_oic_transport_type(conn_type, conn_options, &dev_addr->adapter,
+			&dev_addr->flags);
 
 	return IOTCON_ERROR_NONE;
 }

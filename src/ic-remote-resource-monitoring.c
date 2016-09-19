@@ -28,7 +28,7 @@ API int iotcon_remote_resource_start_monitoring(
 		iotcon_remote_resource_state_changed_cb cb,
 		void *user_data)
 {
-	int ret, connectivity_type;
+	int ret;
 
 	RETV_IF(false == ic_utils_check_ocf_feature(), IOTCON_ERROR_NOT_SUPPORTED);
 	RETV_IF(false == ic_utils_check_permission(IC_PERMISSION_INTERNET),
@@ -49,23 +49,12 @@ API int iotcon_remote_resource_start_monitoring(
 
 	resource->monitoring.state = IOTCON_REMOTE_RESOURCE_ALIVE;
 
-	connectivity_type = resource->connectivity_type;
-
-	switch (connectivity_type) {
-	case IOTCON_CONNECTIVITY_IPV4:
-	case IOTCON_CONNECTIVITY_IPV6:
-	case IOTCON_CONNECTIVITY_ALL:
-		icl_remote_resource_ref(resource);
-		ret = icl_ioty_remote_resource_start_monitoring(resource, cb, user_data);
-		if (IOTCON_ERROR_NONE != ret) {
-			ERR("icl_ioty_remote_resource_start_monitoring() Fail(%d)", ret);
-			icl_remote_resource_unref(resource);
-			return ret;
-		}
-		break;
-	default:
-		ERR("Invalid Connectivity Type(%d)", connectivity_type);
-		return IOTCON_ERROR_INVALID_PARAMETER;
+	icl_remote_resource_ref(resource);
+	ret = icl_ioty_remote_resource_start_monitoring(resource, cb, user_data);
+	if (IOTCON_ERROR_NONE != ret) {
+		ERR("icl_ioty_remote_resource_start_monitoring() Fail(%d)", ret);
+		icl_remote_resource_unref(resource);
+		return ret;
 	}
 
 	return IOTCON_ERROR_NONE;
@@ -74,7 +63,7 @@ API int iotcon_remote_resource_start_monitoring(
 
 API int iotcon_remote_resource_stop_monitoring(iotcon_remote_resource_h resource)
 {
-	int ret, connectivity_type;
+	int ret;
 
 	RETV_IF(false == ic_utils_check_ocf_feature(), IOTCON_ERROR_NOT_SUPPORTED);
 	RETV_IF(false == ic_utils_check_permission(IC_PERMISSION_INTERNET),
@@ -88,23 +77,12 @@ API int iotcon_remote_resource_stop_monitoring(iotcon_remote_resource_h resource
 
 	INFO("Stop Monitoring");
 
-	connectivity_type = resource->connectivity_type;
-
-	switch (connectivity_type) {
-	case IOTCON_CONNECTIVITY_IPV4:
-	case IOTCON_CONNECTIVITY_IPV6:
-	case IOTCON_CONNECTIVITY_ALL:
-		ret = icl_ioty_remote_resource_stop_monitoring(resource);
-		if (IOTCON_ERROR_NONE != ret) {
-			ERR("icl_ioty_remote_resource_stop_monitoring() Fail(%d)", ret);
-			return ret;
-		}
-		icl_remote_resource_unref(resource);
-		break;
-	default:
-		ERR("Invalid Connectivity Type(%d)", connectivity_type);
-		return IOTCON_ERROR_INVALID_PARAMETER;
+	ret = icl_ioty_remote_resource_stop_monitoring(resource);
+	if (IOTCON_ERROR_NONE != ret) {
+		ERR("icl_ioty_remote_resource_stop_monitoring() Fail(%d)", ret);
+		return ret;
 	}
+	icl_remote_resource_unref(resource);
 
 	return IOTCON_ERROR_NONE;
 }

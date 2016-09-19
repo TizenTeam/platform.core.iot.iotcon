@@ -38,6 +38,8 @@ typedef struct {
 	int result;
 	int timeout;
 	OCDoHandle handle;
+	int connectivity_type;
+	int connectivity_extra;
 } icl_cb_s;
 
 int icl_ioty_mutex_lock();
@@ -54,23 +56,23 @@ int icl_ioty_set_platform_info();
 
 /* client APIs */
 int icl_ioty_find_resource(const char *host_address,
-		iotcon_connectivity_type_e connectivity_type,
+		int connectivity_type,
 		iotcon_query_h query,
 		iotcon_found_resource_cb cb,
 		void *user_data);
 int icl_ioty_find_device_info(const char *host_address,
-		iotcon_connectivity_type_e connectivity_type,
+		int connectivity_type,
 		iotcon_query_h query,
 		iotcon_device_info_cb cb,
 		void *user_data);
 int icl_ioty_find_platform_info(const char *host_address,
-		iotcon_connectivity_type_e connectivity_type,
+		int connectivity_type,
 		iotcon_query_h query,
 		iotcon_platform_info_cb cb,
 		void *user_data);
 
 int icl_ioty_add_presence_cb(const char *host_address,
-		iotcon_connectivity_type_e connectivity_type,
+		int connectivity_type,
 		const char *resource_type,
 		iotcon_presence_cb cb,
 		void *user_data,

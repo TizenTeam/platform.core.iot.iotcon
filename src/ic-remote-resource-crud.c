@@ -25,7 +25,7 @@
 API int iotcon_remote_resource_get(iotcon_remote_resource_h resource,
 		iotcon_query_h query, iotcon_remote_resource_response_cb cb, void *user_data)
 {
-	int ret, connectivity_type;
+	int ret;
 
 	RETV_IF(false == ic_utils_check_ocf_feature(), IOTCON_ERROR_NOT_SUPPORTED);
 	RETV_IF(false == ic_utils_check_permission(IC_PERMISSION_INTERNET),
@@ -38,21 +38,10 @@ API int iotcon_remote_resource_get(iotcon_remote_resource_h resource,
 		return IOTCON_ERROR_INVALID_PARAMETER;
 	}
 
-	connectivity_type = resource->connectivity_type;
-
-	switch (connectivity_type) {
-	case IOTCON_CONNECTIVITY_IPV4:
-	case IOTCON_CONNECTIVITY_IPV6:
-	case IOTCON_CONNECTIVITY_ALL:
-		ret = icl_ioty_remote_resource_get(resource, query, cb, user_data);
-		if (IOTCON_ERROR_NONE != ret) {
-			ERR("icl_ioty_remote_resource_get() Fail(%d)", ret);
-			return ret;
-		}
-		break;
-	default:
-		ERR("Invalid Connectivity Type(%d)", connectivity_type);
-		return IOTCON_ERROR_INVALID_PARAMETER;
+	ret = icl_ioty_remote_resource_get(resource, query, cb, user_data);
+	if (IOTCON_ERROR_NONE != ret) {
+		ERR("icl_ioty_remote_resource_get() Fail(%d)", ret);
+		return ret;
 	}
 
 	return IOTCON_ERROR_NONE;
@@ -65,7 +54,7 @@ API int iotcon_remote_resource_put(iotcon_remote_resource_h resource,
 		iotcon_remote_resource_response_cb cb,
 		void *user_data)
 {
-	int ret, connectivity_type;
+	int ret;
 
 	RETV_IF(false == ic_utils_check_ocf_feature(), IOTCON_ERROR_NOT_SUPPORTED);
 	RETV_IF(false == ic_utils_check_permission(IC_PERMISSION_INTERNET),
@@ -79,22 +68,12 @@ API int iotcon_remote_resource_put(iotcon_remote_resource_h resource,
 		return IOTCON_ERROR_INVALID_PARAMETER;
 	}
 
-	connectivity_type = resource->connectivity_type;
-
-	switch (connectivity_type) {
-	case IOTCON_CONNECTIVITY_IPV4:
-	case IOTCON_CONNECTIVITY_IPV6:
-	case IOTCON_CONNECTIVITY_ALL:
-		ret = icl_ioty_remote_resource_put(resource, repr, query, cb, user_data);
-		if (IOTCON_ERROR_NONE != ret) {
-			ERR("icl_ioty_remote_resource_put() Fail(%d)", ret);
-			return ret;
-		}
-		break;
-	default:
-		ERR("Invalid Connectivity Type(%d)", connectivity_type);
-		return IOTCON_ERROR_INVALID_PARAMETER;
+	ret = icl_ioty_remote_resource_put(resource, repr, query, cb, user_data);
+	if (IOTCON_ERROR_NONE != ret) {
+		ERR("icl_ioty_remote_resource_put() Fail(%d)", ret);
+		return ret;
 	}
+
 	return IOTCON_ERROR_NONE;
 }
 
@@ -106,7 +85,7 @@ API int iotcon_remote_resource_post(iotcon_remote_resource_h resource,
 		void *user_data)
 {
 
-	int ret, connectivity_type;
+	int ret;
 
 	RETV_IF(false == ic_utils_check_ocf_feature(), IOTCON_ERROR_NOT_SUPPORTED);
 	RETV_IF(false == ic_utils_check_permission(IC_PERMISSION_INTERNET),
@@ -120,21 +99,10 @@ API int iotcon_remote_resource_post(iotcon_remote_resource_h resource,
 		return IOTCON_ERROR_INVALID_PARAMETER;
 	}
 
-	connectivity_type = resource->connectivity_type;
-
-	switch (connectivity_type) {
-	case IOTCON_CONNECTIVITY_IPV4:
-	case IOTCON_CONNECTIVITY_IPV6:
-	case IOTCON_CONNECTIVITY_ALL:
-		ret = icl_ioty_remote_resource_post(resource, repr, query, cb, user_data);
-		if (IOTCON_ERROR_NONE != ret) {
-			ERR("icl_ioty_remote_resource_post() Fail(%d)", ret);
-			return ret;
-		}
-		break;
-	default:
-		ERR("Invalid Connectivity Type(%d)", connectivity_type);
-		return IOTCON_ERROR_INVALID_PARAMETER;
+	ret = icl_ioty_remote_resource_post(resource, repr, query, cb, user_data);
+	if (IOTCON_ERROR_NONE != ret) {
+		ERR("icl_ioty_remote_resource_post() Fail(%d)", ret);
+		return ret;
 	}
 
 	return IOTCON_ERROR_NONE;
@@ -143,7 +111,7 @@ API int iotcon_remote_resource_post(iotcon_remote_resource_h resource,
 API int iotcon_remote_resource_delete(iotcon_remote_resource_h resource,
 		iotcon_remote_resource_response_cb cb, void *user_data)
 {
-	int ret, connectivity_type;
+	int ret;
 
 	RETV_IF(false == ic_utils_check_ocf_feature(), IOTCON_ERROR_NOT_SUPPORTED);
 	RETV_IF(false == ic_utils_check_permission(IC_PERMISSION_INTERNET),
@@ -156,22 +124,12 @@ API int iotcon_remote_resource_delete(iotcon_remote_resource_h resource,
 		return IOTCON_ERROR_INVALID_PARAMETER;
 	}
 
-	connectivity_type = resource->connectivity_type;
-
-	switch (connectivity_type) {
-	case IOTCON_CONNECTIVITY_IPV4:
-	case IOTCON_CONNECTIVITY_IPV6:
-	case IOTCON_CONNECTIVITY_ALL:
-		ret = icl_ioty_remote_resource_delete(resource, cb, user_data);
-		if (IOTCON_ERROR_NONE != ret) {
-			ERR("icl_ioty_remote_resource_delete() Fail(%d)", ret);
-			return ret;
-		}
-		break;
-	default:
-		ERR("Invalid Connectivity Type(%d)", connectivity_type);
-		return IOTCON_ERROR_INVALID_PARAMETER;
+	ret = icl_ioty_remote_resource_delete(resource, cb, user_data);
+	if (IOTCON_ERROR_NONE != ret) {
+		ERR("icl_ioty_remote_resource_delete() Fail(%d)", ret);
+		return ret;
 	}
+
 	return IOTCON_ERROR_NONE;
 }
 
@@ -182,7 +140,7 @@ API int iotcon_remote_resource_observe_register(
 		iotcon_remote_resource_observe_cb cb,
 		void *user_data)
 {
-	int ret, connectivity_type;
+	int ret;
 
 	RETV_IF(false == ic_utils_check_ocf_feature(), IOTCON_ERROR_NOT_SUPPORTED);
 	RETV_IF(false == ic_utils_check_permission(IC_PERMISSION_INTERNET),
@@ -196,22 +154,11 @@ API int iotcon_remote_resource_observe_register(
 		return IOTCON_ERROR_INVALID_PARAMETER;
 	}
 
-	connectivity_type = resource->connectivity_type;
-
-	switch (connectivity_type) {
-	case IOTCON_CONNECTIVITY_IPV4:
-	case IOTCON_CONNECTIVITY_IPV6:
-	case IOTCON_CONNECTIVITY_ALL:
-		ret = icl_ioty_remote_resource_observe_register(resource, observe_policy, query, cb,
-				user_data);
-		if (IOTCON_ERROR_NONE != ret) {
-			ERR("icl_ioty_remote_resource_observe_register() Fail(%d)", ret);
-			return ret;
-		}
-		break;
-	default:
-		ERR("Invalid Connectivity Type(%d)", connectivity_type);
-		return IOTCON_ERROR_INVALID_PARAMETER;
+	ret = icl_ioty_remote_resource_observe_register(resource, observe_policy, query, cb,
+			user_data);
+	if (IOTCON_ERROR_NONE != ret) {
+		ERR("icl_ioty_remote_resource_observe_register() Fail(%d)", ret);
+		return ret;
 	}
 
 	return IOTCON_ERROR_NONE;
@@ -221,7 +168,7 @@ API int iotcon_remote_resource_observe_register(
 API int iotcon_remote_resource_observe_deregister(
 		iotcon_remote_resource_h resource)
 {
-	int ret, connectivity_type;
+	int ret;
 
 	RETV_IF(false == ic_utils_check_ocf_feature(), IOTCON_ERROR_NOT_SUPPORTED);
 	RETV_IF(false == ic_utils_check_permission(IC_PERMISSION_INTERNET),
@@ -238,21 +185,10 @@ API int iotcon_remote_resource_observe_deregister(
 		return IOTCON_ERROR_INVALID_PARAMETER;
 	}
 
-	connectivity_type = resource->connectivity_type;
-
-	switch (connectivity_type) {
-	case IOTCON_CONNECTIVITY_IPV4:
-	case IOTCON_CONNECTIVITY_IPV6:
-	case IOTCON_CONNECTIVITY_ALL:
-		ret = icl_ioty_remote_resource_observe_deregister(resource);
-		if (IOTCON_ERROR_NONE != ret) {
-			ERR("icl_ioty_remote_resource_observe_deregister() Fail(%d)", ret);
-			return ret;
-		}
-		break;
-	default:
-		ERR("Invalid Connectivity Type(%d)", connectivity_type);
-		return IOTCON_ERROR_INVALID_PARAMETER;
+	ret = icl_ioty_remote_resource_observe_deregister(resource);
+	if (IOTCON_ERROR_NONE != ret) {
+		ERR("icl_ioty_remote_resource_observe_deregister() Fail(%d)", ret);
+		return ret;
 	}
 
 	return IOTCON_ERROR_NONE;

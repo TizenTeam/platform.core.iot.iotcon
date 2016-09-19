@@ -22,25 +22,19 @@
 #include "ic-remote-resource.h"
 #include "ic-presence.h"
 #include "ic-request.h"
+#include "ic-ioty-parse.h"
 #include "ic-types.h"
 
 void icl_destroy_find_cb_data(icl_find_cb_s *cb_data)
 {
-	int i;
 	RET_IF(NULL == cb_data);
 
-	for (i = 0; i < cb_data->resource_count; i++) {
-		cb_data->resource_list[i]->is_found = false;
-		iotcon_remote_resource_destroy(cb_data->resource_list[i]);
-	}
+	g_list_free_full(cb_data->resource_list, ic_ioty_free_resource_list);
 
-	free(cb_data->resource_list);
 	free(cb_data);
 }
 
-int icl_create_find_cb_data(icl_cb_s *cb_data,
-		iotcon_remote_resource_h *resource_list,
-		int resource_count,
+int icl_create_find_cb_data(icl_cb_s *cb_data, GList *resource_list,
 		icl_find_cb_s **find_cb_data)
 {
 	icl_find_cb_s *cd;
@@ -57,7 +51,6 @@ int icl_create_find_cb_data(icl_cb_s *cb_data,
 
 	cd->cb_data = cb_data;
 	cd->resource_list = resource_list;
-	cd->resource_count = resource_count;
 
 	*find_cb_data = cd;
 	return IOTCON_ERROR_NONE;

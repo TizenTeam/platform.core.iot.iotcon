@@ -17,6 +17,7 @@
 #define __IOTCON_INTERNAL_IOTIVITY_PARSE_H__
 
 #include <stdbool.h>
+#include <glib.h>
 
 #include "iotcon-types.h"
 #include "iotcon-errors.h"
@@ -31,10 +32,12 @@ int ic_ioty_parse_oic_dev_address(OCDevAddr *dev_addr, char **host_address,
 
 int ic_ioty_parse_oic_header_option(OCHeaderOption *option, int option_size,
 		iotcon_options_h *options);
+void ic_ioty_free_resource_list(gpointer data);
 int ic_ioty_parse_oic_discovery_payload(OCDevAddr *dev_addr,
+		iotcon_connectivity_type_e connectivity_type,
+		int connectivity_prefer,
 		OCDiscoveryPayload *discovered,
-		iotcon_remote_resource_h **resource_list,
-		int *resource_count);
+		GList **resource_list);
 int ic_ioty_parse_oic_device_payload(OCDevicePayload *payload,
 		iotcon_device_info_h *device_info);
 int ic_ioty_parse_oic_platform_payload(OCPlatformPayload *payload,
@@ -45,6 +48,5 @@ int ic_ioty_parse_oic_presence_payload(OCDevAddr *dev_addr,
 		iotcon_presence_response_h *presence_response);
 int ic_ioty_parse_oic_rep_payload(OCRepPayload *payload, bool is_parent,
 		iotcon_representation_h *representation);
-
 
 #endif /*__IOTCON_INTERNAL_IOTIVITY_PARSE_H__*/

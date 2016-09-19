@@ -123,20 +123,25 @@ void* icl_ioty_ocprocess_thread(void *data)
 
 static gboolean _icl_ioty_ocprocess_find_idle_cb(gpointer p)
 {
-	int i, ret;
+	int ret;
 	icl_cb_s *cb_data;
 	icl_find_cb_s *find_cb_data = p;
 	iotcon_found_resource_cb cb;
+	iotcon_remote_resource_h resource;
+	GList *resource_list;
 
 	RETV_IF(NULL == find_cb_data, G_SOURCE_REMOVE);
 	cb_data = find_cb_data->cb_data;
 
+	resource_list = find_cb_data->resource_list;
+
 	if (cb_data && cb_data->cb) {
-		for (i = 0; i < find_cb_data->resource_count; i++) {
-			find_cb_data->resource_list[i]->is_found = true;
+		for (; resource_list; resource_list = resource_list->next) {
+			resource = resource_list->data;
+			resource->is_found = true;
 			cb = (iotcon_found_resource_cb)cb_data->cb;
-			if (IOTCON_FUNC_STOP == cb(find_cb_data->resource_list[i], IOTCON_ERROR_NONE,
-						cb_data->user_data)) { /* Stop */
+			if (IOTCON_FUNC_STOP == cb(resource, IOTCON_ERROR_NONE, cb_data->user_data)) {
+				/* Stop */
 				INFO("Stop the callback");
 				cb_data->cb = NULL;
 
@@ -151,6 +156,7 @@ static gboolean _icl_ioty_ocprocess_find_idle_cb(gpointer p)
 
 				break;
 			}
+			resource->is_found = false;
 		}
 	}
 	icl_destroy_find_cb_data(find_cb_data);
@@ -188,8 +194,8 @@ OCStackApplicationResult icl_ioty_ocprocess_find_cb(void *ctx, OCDoHandle handle
 		OCClientResponse *resp)
 {
 	FN_CALL;
-	int ret, resource_count;
-	iotcon_remote_resource_h *resource_list;
+	int ret;
+	GList *resource_list;
 	icl_find_cb_s *find_cb_data = NULL;
 	icl_cb_s *cb_data = ctx;
 
@@ -200,8 +206,8 @@ OCStackApplicationResult icl_ioty_ocprocess_find_cb(void *ctx, OCDoHandle handle
 	RETVM_IF(PAYLOAD_TYPE_DISCOVERY != resp->payload->type,
 			OC_STACK_KEEP_TRANSACTION, "Invalid payload type(%d)", resp->payload->type);
 
-	ret = ic_ioty_parse_oic_discovery_payload(&(resp->devAddr),
-			(OCDiscoveryPayload*)resp->payload, &resource_list, &resource_count);
+	ret = ic_ioty_parse_oic_discovery_payload(&(resp->devAddr), cb_data->connectivity_type,
+			cb_data->connectivity_extra, (OCDiscoveryPayload*)resp->payload, &resource_list);
 	if (IOTCON_ERROR_NONE != ret) {
 		ERR("_icl_ioty_ocprocess_parse_find_payload() Fail(%d)", ret);
 		cb_data->result = ret;
@@ -209,7 +215,7 @@ OCStackApplicationResult icl_ioty_ocprocess_find_cb(void *ctx, OCDoHandle handle
 		return OC_STACK_KEEP_TRANSACTION;
 	}
 
-	ret = icl_create_find_cb_data(cb_data, resource_list, resource_count, &find_cb_data);
+	ret = icl_create_find_cb_data(cb_data, resource_list, &find_cb_data);
 	if (IOTCON_ERROR_NONE != ret) {
 		ERR("icl_create_find_cb_data() Fail(%d)", ret);
 		cb_data->result = ret;

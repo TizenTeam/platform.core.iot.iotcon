@@ -110,12 +110,21 @@ typedef enum {
 /**
  * @brief Enumeration for of connectivities which can be held in a resource.
  *
+ * @remarks IOTCON_CONNECTIVITY_PREFER_UDP and IOTCON_CONNECTIVITY_PREFER_TCP should be
+ * mutually exclusive.
+ * @remarks IOTCON_CONNECTIVITY_IPV4_ONLY and IOTCON_CONNECTIVITY_IPV6_ONLY should be
+ * mutually exclusive.
+ *
  * @since_tizen 3.0
  */
 typedef enum {
 	IOTCON_CONNECTIVITY_ALL = 0, /**< Indicates all connectivities */
-	IOTCON_CONNECTIVITY_IPV4, /**< Indicates Internet Protocol version 4 connectivity */
-	IOTCON_CONNECTIVITY_IPV6, /**< Indicates Internet Protocol version 6 connectivity */
+	IOTCON_CONNECTIVITY_IP = (1 << 0), /**< Indicates Internet Protocol connectivity */
+	/* Extra options for Connectivity */
+	IOTCON_CONNECTIVITY_PREFER_UDP = (1 << 16), /**< It is related to IOTCON_CONNECTIVITY_IP, and it indicates UDP is preferred */
+	IOTCON_CONNECTIVITY_PREFER_TCP = (1 << 17), /**< It is related to IOTCON_CONNECTIVITY_IP, and it indicates TCP is preferred */
+	IOTCON_CONNECTIVITY_IPV4_ONLY = (1 << 18), /**< When this bit is set with IOTCON_CONNECTIVITY_IP, resources are discovered for IPv4 */
+	IOTCON_CONNECTIVITY_IPV6_ONLY = (1 << 19), /**< When this bit is set with IOTCON_CONNECTIVITY_IP, resources are discovered for IPv6 */
 } iotcon_connectivity_type_e;
 
 /**
@@ -250,7 +259,6 @@ typedef enum {
 	IOTCON_QOS_LOW, /**< Indicates low quality of service */
 	IOTCON_QOS_HIGH, /**< Indicates high quality of service  */
 } iotcon_qos_e;
-
 
 /**
  * @}

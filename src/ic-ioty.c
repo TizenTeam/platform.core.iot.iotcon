@@ -386,12 +386,13 @@ static char* _icl_ioty_resource_generate_uri(const char *uri_path, iotcon_query_
 }
 
 int icl_ioty_find_resource(const char *host_address,
-		iotcon_connectivity_type_e connectivity_type,
+		int connectivity_type,
 		iotcon_query_h query,
 		iotcon_found_resource_cb cb,
 		void *user_data)
 {
 	FN_CALL;
+	int conn_options;
 	int ret, timeout;
 	char *coap_str = NULL;
 	char *full_uri;
@@ -428,15 +429,27 @@ int icl_ioty_find_resource(const char *host_address,
 		free(full_uri);
 		return IOTCON_ERROR_OUT_OF_MEMORY;
 	}
+
 	cb_data->op = ICL_FIND_RESOURCE;
 	cb_data->cb = cb;
 	cb_data->user_data = user_data;
+	cb_data->connectivity_type = connectivity_type % IC_CONNECTIVITY_REMOVE_EXTRA_OPTIONS;
+	cb_data->connectivity_extra = connectivity_type - cb_data->connectivity_type;
 
 	cbdata.context = cb_data;
 	cbdata.cb = icl_ioty_ocprocess_find_cb;
 	cbdata.cd = _icl_ioty_free_cb_data;
 
-	oic_conn_type = ic_ioty_convert_connectivity_type(connectivity_type);
+	conn_options = ic_utils_host_address_get_connectivity(host_address,
+			cb_data->connectivity_type);
+	if (NULL == host_address && IOTCON_CONNECTIVITY_IP == cb_data->connectivity_type) {
+		if (IOTCON_CONNECTIVITY_IPV4_ONLY & cb_data->connectivity_extra)
+			conn_options |= IC_UTILS_CONNECTIVITY_IPV4;
+		else if (IOTCON_CONNECTIVITY_IPV6_ONLY & cb_data->connectivity_extra)
+			conn_options |= IC_UTILS_CONNECTIVITY_IPV6;
+	}
+	oic_conn_type = ic_ioty_convert_connectivity_type(cb_data->connectivity_type,
+			conn_options);
 
 	ret = icl_ioty_mutex_lock();
 	if (IOTCON_ERROR_NONE != ret) {
@@ -467,12 +480,14 @@ int icl_ioty_find_resource(const char *host_address,
 }
 
 int icl_ioty_find_device_info(const char *host_address,
-		iotcon_connectivity_type_e connectivity_type,
+		int connectivity_type,
 		iotcon_query_h query,
 		iotcon_device_info_cb cb,
 		void *user_data)
 {
 	int ret, timeout;
+	int conn_extra;
+	int conn_options;
 	char *coap_str = NULL;
 	char *full_uri;
 	char uri[PATH_MAX] = {0};
@@ -514,7 +529,18 @@ int icl_ioty_find_device_info(const char *host_address,
 	cbdata.cb = icl_ioty_ocprocess_device_info_cb;
 	cbdata.cd = _icl_ioty_free_cb_data;
 
-	oic_conn_type = ic_ioty_convert_connectivity_type(connectivity_type);
+	conn_extra = connectivity_type;
+	connectivity_type %= IC_CONNECTIVITY_REMOVE_EXTRA_OPTIONS;
+	conn_extra -= connectivity_type;
+
+	conn_options = ic_utils_host_address_get_connectivity(host_address, connectivity_type);
+	if (NULL == host_address && IOTCON_CONNECTIVITY_IP == connectivity_type) {
+		if (IOTCON_CONNECTIVITY_IPV4_ONLY & conn_extra)
+			conn_options |= IC_UTILS_CONNECTIVITY_IPV4;
+		else if (IOTCON_CONNECTIVITY_IPV6_ONLY & conn_extra)
+			conn_options |= IC_UTILS_CONNECTIVITY_IPV6;
+	}
+	oic_conn_type = ic_ioty_convert_connectivity_type(connectivity_type, conn_options);
 
 	ret = icl_ioty_mutex_lock();
 	if (IOTCON_ERROR_NONE != ret) {
@@ -543,12 +569,14 @@ int icl_ioty_find_device_info(const char *host_address,
 }
 
 int icl_ioty_find_platform_info(const char *host_address,
-		iotcon_connectivity_type_e connectivity_type,
+		int connectivity_type,
 		iotcon_query_h query,
 		iotcon_platform_info_cb cb,
 		void *user_data)
 {
 	int ret, timeout;
+	int conn_extra;
+	int conn_options;
 	char *coap_str = NULL;
 	char *full_uri;
 	char uri[PATH_MAX] = {0};
@@ -590,7 +618,18 @@ int icl_ioty_find_platform_info(const char *host_address,
 	cbdata.cb = icl_ioty_ocprocess_platform_info_cb;
 	cbdata.cd = _icl_ioty_free_cb_data;
 
-	oic_conn_type = ic_ioty_convert_connectivity_type(connectivity_type);
+	conn_extra = connectivity_type;
+	connectivity_type %= IC_CONNECTIVITY_REMOVE_EXTRA_OPTIONS;
+	conn_extra -= connectivity_type;
+
+	conn_options = ic_utils_host_address_get_connectivity(host_address, connectivity_type);
+	if (NULL == host_address && IOTCON_CONNECTIVITY_IP == connectivity_type) {
+		if (IOTCON_CONNECTIVITY_IPV4_ONLY & conn_extra)
+			conn_options |= IC_UTILS_CONNECTIVITY_IPV4;
+		else if (IOTCON_CONNECTIVITY_IPV6_ONLY & conn_extra)
+			conn_options |= IC_UTILS_CONNECTIVITY_IPV6;
+	}
+	oic_conn_type = ic_ioty_convert_connectivity_type(connectivity_type, conn_options);
 
 	ret = icl_ioty_mutex_lock();
 	if (IOTCON_ERROR_NONE != ret) {
@@ -681,7 +720,7 @@ int icl_ioty_set_platform_info()
 }
 
 int icl_ioty_add_presence_cb(const char *host_address,
-		iotcon_connectivity_type_e connectivity_type,
+		int connectivity_type,
 		const char *resource_type,
 		iotcon_presence_cb cb,
 		void *user_data,
@@ -689,6 +728,8 @@ int icl_ioty_add_presence_cb(const char *host_address,
 {
 	int ret;
 	int index = 0;
+	int conn_extra;
+	int conn_options;
 	OCDoHandle handle;
 	const char *address;
 	char uri[PATH_MAX] = {0};
@@ -720,7 +761,8 @@ int icl_ioty_add_presence_cb(const char *host_address,
 	presence->user_data = user_data;
 	if (host_address)
 		presence->host_address = strdup(host_address);
-	presence->connectivity_type = connectivity_type;
+	presence->connectivity_type
+		= connectivity_type % IC_CONNECTIVITY_REMOVE_EXTRA_OPTIONS;
 	if (resource_type)
 		presence->resource_type = strdup(resource_type);
 
@@ -728,7 +770,18 @@ int icl_ioty_add_presence_cb(const char *host_address,
 	cbdata.cd = NULL;
 	cbdata.cb = icl_ioty_ocprocess_presence_cb;
 
-	oic_conn_type = ic_ioty_convert_connectivity_type(connectivity_type);
+	conn_extra = connectivity_type - presence->connectivity_type;
+
+	conn_options = ic_utils_host_address_get_connectivity(host_address,
+			presence->connectivity_type);
+	if (NULL == host_address && IOTCON_CONNECTIVITY_IP == presence->connectivity_type) {
+		if (IOTCON_CONNECTIVITY_IPV4_ONLY & conn_extra)
+			conn_options |= IC_UTILS_CONNECTIVITY_IPV4;
+		else if (IOTCON_CONNECTIVITY_IPV6_ONLY & conn_extra)
+			conn_options |= IC_UTILS_CONNECTIVITY_IPV6;
+	}
+	oic_conn_type = ic_ioty_convert_connectivity_type(presence->connectivity_type,
+			conn_options);
 
 	ret = icl_ioty_mutex_lock();
 	if (IOTCON_ERROR_NONE != ret) {
@@ -826,13 +879,14 @@ static int _icl_ioty_remote_resource_observe(iotcon_remote_resource_h resource,
 	}
 
 	/* connectivity type */
-	oic_conn_type = ic_ioty_convert_connectivity_type(resource->connectivity_type);
+	oic_conn_type = ic_ioty_convert_connectivity_type(resource->connectivity_type,
+			resource->connectivity_options);
 
 	/* host address, port */
-	ret = ic_ioty_convert_connectivity(resource->host_address,
-			resource->connectivity_type, &dev_addr);
+	ret = ic_ioty_convert_host_address(resource->host_address,
+			resource->connectivity_type, resource->connectivity_options, &dev_addr);
 	if (IOTCON_ERROR_NONE != ret) {
-		ERR("ic_ioty_convert_connectivity() Fail(%d)", ret);
+		ERR("ic_ioty_convert_host_address() Fail(%d)", ret);
 		free(uri);
 		return ret;
 	}
@@ -1042,10 +1096,10 @@ static int _icl_ioty_remote_resource_crud(
 	}
 
 	/* host address, port */
-	ret = ic_ioty_convert_connectivity(resource->host_address,
-			resource->connectivity_type, &dev_addr);
+	ret = ic_ioty_convert_host_address(resource->host_address,
+			resource->connectivity_type, resource->connectivity_options, &dev_addr);
 	if (IOTCON_ERROR_NONE != ret) {
-		ERR("ic_ioty_convert_connectivity() Fail(%d)", ret);
+		ERR("ic_ioty_convert_host_address() Fail(%d)", ret);
 		free(uri);
 		return ret;
 	}
@@ -1064,7 +1118,8 @@ static int _icl_ioty_remote_resource_crud(
 	}
 
 	/* connectivity type */
-	oic_conn_type = ic_ioty_convert_connectivity_type(resource->connectivity_type);
+	oic_conn_type = ic_ioty_convert_connectivity_type(resource->connectivity_type,
+			resource->connectivity_options);
 
 	/* options */
 	if (resource->header_options && resource->header_options->hash) {

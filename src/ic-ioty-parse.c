@@ -65,62 +65,80 @@ iotcon_error_e ic_ioty_parse_oic_error(OCStackResult ret)
 	return IOTCON_ERROR_IOTIVITY;
 }
 
-static iotcon_connectivity_type_e _ioty_parse_oic_transport(OCTransportAdapter adapter,
-		OCTransportFlags flag)
-{
-	iotcon_connectivity_type_e type = IOTCON_CONNECTIVITY_ALL;
 
+static void _ioty_parse_oic_transport(OCTransportAdapter adapter, OCTransportFlags flag,
+		iotcon_connectivity_type_e *conn_type, int *conn_options)
+{
 	/* Need to consider to allow various connectivity types */
 	switch (adapter) {
 	case OC_ADAPTER_IP:
+		*conn_options = IC_UTILS_CONNECTIVITY_UDP;
 		if (OC_IP_USE_V4 & flag)
-			type = IOTCON_CONNECTIVITY_IPV4;
+			*conn_options |= IC_UTILS_CONNECTIVITY_IPV4;
 		else if (OC_IP_USE_V6 & flag)
-			type = IOTCON_CONNECTIVITY_IPV6;
-		else
-			ERR("Invalid Flag(%d)", flag);
+			*conn_options |= IC_UTILS_CONNECTIVITY_IPV6;
+		break;
+	case OC_ADAPTER_TCP:
+		*conn_options = IC_UTILS_CONNECTIVITY_TCP;
+		if (OC_IP_USE_V4 & flag)
+			*conn_options |= IC_UTILS_CONNECTIVITY_IPV4;
+		else if (OC_IP_USE_V6 & flag)
+			*conn_options |= IC_UTILS_CONNECTIVITY_IPV6;
 		break;
 	default:
-		ERR("Invalid Adpater(%d)", adapter);
+		ERR("Invalid Adapter(%d) / Flag(%d)", adapter, flag);
+		return;
 	}
-	return type;
+
+	*conn_type = IOTCON_CONNECTIVITY_IP;
 }
 
 
 int ic_ioty_parse_oic_dev_address(OCDevAddr *dev_addr, char **host_address,
 		int *conn_type)
 {
-	int connectivity_type;
+	int conn_options;
 	char host_addr[PATH_MAX] = {0};
 	const char *coap_str;
+	iotcon_connectivity_type_e temp_conn_type;
 
 	RETV_IF(NULL == host_address, IOTCON_ERROR_INVALID_PARAMETER);
 	RETV_IF(NULL == conn_type, IOTCON_ERROR_INVALID_PARAMETER);
 
-	connectivity_type = _ioty_parse_oic_transport(dev_addr->adapter, dev_addr->flags);
+	_ioty_parse_oic_transport(dev_addr->adapter, dev_addr->flags, &temp_conn_type,
+			&conn_options);
 
-	if (OC_FLAG_SECURE & dev_addr->flags)
-		coap_str = IC_COAPS;
-	else
-		coap_str = IC_COAP;
+	if (OC_FLAG_SECURE & dev_addr->flags) {
+		if (OC_ADAPTER_TCP & dev_addr->adapter)
+			coap_str = IC_COAPS_TCP;
+		else
+			coap_str = IC_COAPS;
+	} else {
+		if (OC_ADAPTER_TCP & dev_addr->adapter)
+			coap_str = IC_COAP_TCP;
+		else
+			coap_str = IC_COAP;
+	}
 
-	switch (connectivity_type) {
-	case IOTCON_CONNECTIVITY_IPV6:
-		snprintf(host_addr, sizeof(host_addr), "%s[%s]:%d", coap_str, dev_addr->addr,
-				dev_addr->port);
+	switch (temp_conn_type) {
+	case IOTCON_CONNECTIVITY_IP:
+		if (IC_UTILS_CONNECTIVITY_IPV6 & conn_options) {
+			snprintf(host_addr, sizeof(host_addr), "%s[%s]:%d", coap_str, dev_addr->addr,
+					dev_addr->port);
+		} else {
+			snprintf(host_addr, sizeof(host_addr), "%s%s:%d", coap_str, dev_addr->addr,
+					dev_addr->port);
+		}
 		break;
-	case IOTCON_CONNECTIVITY_IPV4:
-		snprintf(host_addr, sizeof(host_addr), "%s%s:%d", coap_str, dev_addr->addr,
-				dev_addr->port);
-		break;
+	case IOTCON_CONNECTIVITY_ALL:
 	default:
-		ERR("Invalid Connectivity Type(%d)", connectivity_type);
+		ERR("Invalid Connectivity Type(%d)", temp_conn_type);
 		return IOTCON_ERROR_INVALID_PARAMETER;
 	}
 
 	*host_address = strdup(host_addr);
 
-	*conn_type = connectivity_type;
+	*conn_type = temp_conn_type;
 
 	return IOTCON_ERROR_NONE;
 }
@@ -204,59 +222,119 @@ iotcon_request_type_e ic_ioty_parse_oic_method(OCMethod method)
 	}
 }
 
-static void _icl_ioty_free_resource_list(iotcon_remote_resource_h *resource_list,
-		int resource_count)
+void ic_ioty_free_resource_list(gpointer data)
 {
-	int i;
+	iotcon_remote_resource_h resource = data;
 
-	RET_IF(NULL == resource_list);
+	iotcon_remote_resource_destroy(resource);
+}
 
-	for (i = 0; i < resource_count; i++)
-		iotcon_remote_resource_destroy(resource_list[i]);
+static int _parse_remote_resource(OCDevAddr *dev_addr,
+		OCTransportAdapter adapter,
+		int port,
+		uint8_t policies,
+		char *uri,
+		iotcon_resource_interfaces_h ifaces,
+		iotcon_resource_types_h types,
+		char *device_id,
+		char *device_name,
+		iotcon_remote_resource_h *resource)
+{
+	int ret;
+	int conn_options;
+	const char *coap_str = IC_COAP;
+	char host_address[PATH_MAX] = {0};
+	iotcon_remote_resource_h temp;
+	iotcon_connectivity_type_e conn_type;
 
-	free(resource_list);
+	_ioty_parse_oic_transport(adapter, dev_addr->flags, &conn_type, &conn_options);
+
+	switch (conn_type) {
+	case IOTCON_CONNECTIVITY_IP:
+		if (IC_UTILS_CONNECTIVITY_TCP & conn_options) {
+			if (IOTCON_RESOURCE_SECURE & policies)
+				coap_str = IC_COAPS_TCP;
+			else
+				coap_str = IC_COAP_TCP;
+		}
+		else if (IC_UTILS_CONNECTIVITY_UDP & conn_options) {
+			if (IOTCON_RESOURCE_SECURE & policies)
+				coap_str = IC_COAPS;
+			else
+				coap_str = IC_COAP;
+		}
+
+		if (IC_UTILS_CONNECTIVITY_IPV6 & conn_options) {
+			snprintf(host_address, sizeof(host_address), "%s[%s]:%d", coap_str,
+					dev_addr->addr, port);
+		} else {
+			snprintf(host_address, sizeof(host_address), "%s%s:%d", coap_str,
+					dev_addr->addr, port);
+		}
+		break;
+	case IOTCON_CONNECTIVITY_ALL:
+	default:
+		snprintf(host_address, sizeof(host_address), "%s%s", coap_str, dev_addr->addr);
+	}
+
+	/* remote resource */
+	ret = iotcon_remote_resource_create(host_address, conn_type, uri, policies, types,
+			ifaces, &temp);
+	if (IOTCON_ERROR_NONE != ret) {
+		ERR("iotcon_remote_resource_create() Fail(%d)", ret);
+		return ret;
+	}
+
+	temp->device_id = strdup(device_id);
+	if (NULL == temp->device_id) {
+		ERR("strdup(device_id) Fail(%d)", errno);
+		iotcon_remote_resource_destroy(temp);
+		return IOTCON_ERROR_OUT_OF_MEMORY;
+	}
+
+	if (device_name)
+		temp->device_name = strdup(device_name);
+	else
+		temp->device_name = strdup("");
+	if (NULL == temp->device_name) {
+		ERR("strdup(device_name) Fail(%d)", errno);
+		iotcon_remote_resource_destroy(temp);
+		return IOTCON_ERROR_OUT_OF_MEMORY;
+	}
+
+	*resource = temp;
+
+	return IOTCON_ERROR_NONE;
 }
 
 int ic_ioty_parse_oic_discovery_payload(OCDevAddr *dev_addr,
+		iotcon_connectivity_type_e connectivity_type,
+		int connectivity_prefer,
 		OCDiscoveryPayload *payload,
-		iotcon_remote_resource_h **resource_list,
-		int *resource_count)
+		GList **resource_list)
 {
-	int i, ret, res_count;
-	iotcon_remote_resource_h *res_list;
+	int ret;
+	GList *res_list = NULL;
 	struct OCResourcePayload *res_payload;
 
 	RETV_IF(NULL == payload, IOTCON_ERROR_INVALID_PARAMETER);
 	RETV_IF(NULL == dev_addr, IOTCON_ERROR_INVALID_PARAMETER);
 	RETV_IF(NULL == resource_list, IOTCON_ERROR_INVALID_PARAMETER);
-	RETV_IF(NULL == resource_count, IOTCON_ERROR_INVALID_PARAMETER);
 
-	res_payload = payload->resources;
-	res_count = OCDiscoveryPayloadGetResourceCount(payload);
-	if (res_count <= 0) {
-		ERR("Invalid count(%d)", res_count);
-		return IOTCON_ERROR_IOTIVITY;
-	}
-
-	res_list = calloc(res_count, sizeof(iotcon_remote_resource_h));
-	if (NULL == res_list) {
-		ERR("calloc() Fail(%d)", errno);
-		return IOTCON_ERROR_OUT_OF_MEMORY;
-	}
-
-	for (i = 0; res_payload; i++, res_payload = res_payload->next) {
-		int port, conn_type;
+	for (res_payload = payload->resources; res_payload; res_payload = res_payload->next) {
+		int port;
+		bool udp_on;
+		bool tcp_on;
 		uint8_t policies;
+		iotcon_remote_resource_h res;
 		iotcon_resource_interfaces_h ifaces;
 		iotcon_resource_types_h types;
-		char host_addr[PATH_MAX] = {0};
-		char *device_name;
 		OCStringLL *node;
 
 		/* uri path */
 		if (NULL == res_payload->uri) {
 			ERR("res_payload uri is NULL");
-			_icl_ioty_free_resource_list(res_list, res_count);
+			g_list_free_full(res_list, ic_ioty_free_resource_list);
 			return IOTCON_ERROR_IOTIVITY;
 		}
 
@@ -264,14 +342,14 @@ int ic_ioty_parse_oic_discovery_payload(OCDevAddr *dev_addr,
 		node = res_payload->types;
 		if (NULL == node) {
 			ERR("res_payload types is NULL");
-			_icl_ioty_free_resource_list(res_list, res_count);
+			g_list_free_full(res_list, ic_ioty_free_resource_list);
 			return IOTCON_ERROR_IOTIVITY;
 		}
 
 		ret = iotcon_resource_types_create(&types);
 		if (IOTCON_ERROR_NONE != ret) {
 			ERR("iotcon_resource_types_create() Fail(%d)", ret);
-			_icl_ioty_free_resource_list(res_list, res_count);
+			g_list_free_full(res_list, ic_ioty_free_resource_list);
 			return ret;
 		}
 
@@ -280,7 +358,7 @@ int ic_ioty_parse_oic_discovery_payload(OCDevAddr *dev_addr,
 			if (IOTCON_ERROR_NONE != ret) {
 				ERR("iotcon_resource_types_add() Fail(%d)", ret);
 				iotcon_resource_types_destroy(types);
-				_icl_ioty_free_resource_list(res_list, res_count);
+				g_list_free_full(res_list, ic_ioty_free_resource_list);
 				return ret;
 			}
 			node = node->next;
@@ -302,61 +380,57 @@ int ic_ioty_parse_oic_discovery_payload(OCDevAddr *dev_addr,
 		if (res_payload->secure)
 			policies |= IOTCON_RESOURCE_SECURE;
 
-		/* port */
-		port = (res_payload->port) ? res_payload->port : dev_addr->port;
+		/* preference is not set */
+		tcp_on = true;
+		udp_on = true;
 
-		/* connectivity type */
-		conn_type = _ioty_parse_oic_transport(dev_addr->adapter, dev_addr->flags);
-
-		/* host address */
-		switch (conn_type) {
-		case IOTCON_CONNECTIVITY_IPV6:
-			snprintf(host_addr, sizeof(host_addr), "[%s]:%d", dev_addr->addr, port);
-			break;
-		case IOTCON_CONNECTIVITY_IPV4:
-			snprintf(host_addr, sizeof(host_addr), "%s:%d", dev_addr->addr, port);
-			break;
-		default:
-			snprintf(host_addr, sizeof(host_addr), "%s", dev_addr->addr);
+		if ((IOTCON_CONNECTIVITY_PREFER_UDP | IOTCON_CONNECTIVITY_PREFER_TCP)
+				& connectivity_prefer) {
+			udp_on = IOTCON_CONNECTIVITY_PREFER_UDP & connectivity_prefer;
+			tcp_on = IOTCON_CONNECTIVITY_PREFER_TCP & connectivity_prefer;
 		}
 
-		ret = iotcon_remote_resource_create(host_addr, conn_type, res_payload->uri,
-				policies, types, ifaces, &(res_list[i]));
-		if (IOTCON_ERROR_NONE != ret) {
-			ERR("iotcon_remote_resource_create() Fail(%d)", ret);
-			iotcon_resource_interfaces_destroy(ifaces);
-			iotcon_resource_types_destroy(types);
-			_icl_ioty_free_resource_list(res_list, res_count);
-			return ret;
+		/* UDP */
+		if (udp_on || (0 == res_payload->tcpPort)) {
+			/* port */
+			port = (res_payload->port) ? res_payload->port : dev_addr->port;
+
+			ret = _parse_remote_resource(dev_addr, dev_addr->adapter, port, policies,
+					res_payload->uri, ifaces, types, payload->sid, payload->name, &res);
+			if (IOTCON_ERROR_NONE != ret) {
+				ERR("_parse_remote_resource() Fail(%d)", ret);
+				iotcon_resource_interfaces_destroy(ifaces);
+				iotcon_resource_types_destroy(types);
+				continue;
+			}
+
+			res_list = g_list_append(res_list, res);
 		}
 
-		res_list[i]->device_id = strdup(payload->sid);
-		if (NULL == res_list[i]->device_id) {
-			ERR("strdup(device_id) Fail(%d)", errno);
-			_icl_ioty_free_resource_list(res_list, res_count);
-			return IOTCON_ERROR_OUT_OF_MEMORY;
-		}
+		/* TCP */
+		if (tcp_on && res_payload->tcpPort) {
+			/* port */
+			port = res_payload->tcpPort;
 
-		if (payload->name)
-			device_name = strdup(payload->name);
-		else
-			device_name = strdup("");
-		if (NULL == device_name) {
-			ERR("strdup(device_name) Fail(%d)", errno);
-			_icl_ioty_free_resource_list(res_list, res_count);
-			return IOTCON_ERROR_OUT_OF_MEMORY;
-		}
+			ret = _parse_remote_resource(dev_addr, OC_ADAPTER_TCP, port, policies,
+					res_payload->uri, ifaces, types, payload->sid, payload->name, &res);
+			if (IOTCON_ERROR_NONE != ret) {
+				ERR("_parse_remote_resource() Fail(%d)", ret);
+				iotcon_resource_interfaces_destroy(ifaces);
+				iotcon_resource_types_destroy(types);
+				continue;
+			}
 
-		res_list[i]->device_name = device_name;
+			res_list = g_list_append(res_list, res);
+		}
 
 		iotcon_resource_interfaces_destroy(ifaces);
 		iotcon_resource_types_destroy(types);
 	}
 
 	*resource_list = res_list;
-	*resource_count = res_count;
-	return IOTCON_ERROR_NONE;
 
+	return IOTCON_ERROR_NONE;
 }
 
 int ic_ioty_parse_oic_device_payload(OCDevicePayload *payload,

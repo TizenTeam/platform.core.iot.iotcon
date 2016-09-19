@@ -35,7 +35,7 @@
 /* The length of resource_type should be less than or equal to 61.
  * If resource_type is NULL, then All resources in host are discovered. */
 API int iotcon_find_resource(const char *host_address,
-		iotcon_connectivity_type_e connectivity_type,
+		int connectivity_type,
 		iotcon_query_h query,
 		iotcon_found_resource_cb cb,
 		void *user_data)
@@ -45,22 +45,15 @@ API int iotcon_find_resource(const char *host_address,
 	RETV_IF(false == ic_utils_check_ocf_feature(), IOTCON_ERROR_NOT_SUPPORTED);
 	RETV_IF(false == ic_utils_check_permission(IC_PERMISSION_INTERNET),
 			IOTCON_ERROR_PERMISSION_DENIED);
+	RETV_IF(false == ic_utils_check_connectivity_type(connectivity_type),
+			IOTCON_ERROR_INVALID_PARAMETER);
 	RETV_IF(NULL == cb, IOTCON_ERROR_INVALID_PARAMETER);
 
-	switch (connectivity_type) {
-	case IOTCON_CONNECTIVITY_IPV4:
-	case IOTCON_CONNECTIVITY_IPV6:
-	case IOTCON_CONNECTIVITY_ALL:
-		ret = icl_ioty_find_resource(host_address, connectivity_type, query, cb,
-				user_data);
-		if (IOTCON_ERROR_NONE != ret) {
-			ERR("icl_ioty_find_resource() Fail(%d)", ret);
-			return ret;
-		}
-		break;
-	default:
-		ERR("Invalid Connectivity Type(%d)", connectivity_type);
-		return IOTCON_ERROR_INVALID_PARAMETER;
+	ret = icl_ioty_find_resource(host_address, connectivity_type, query, cb,
+			user_data);
+	if (IOTCON_ERROR_NONE != ret) {
+		ERR("icl_ioty_find_resource() Fail(%d)", ret);
+		return ret;
 	}
 
 	return IOTCON_ERROR_NONE;
@@ -103,8 +96,11 @@ API int iotcon_remote_resource_create(const char *host_address,
 		return IOTCON_ERROR_OUT_OF_MEMORY;
 	}
 
-	resource->host_address = ic_utils_strdup(temp);
+	resource->connectivity_options = ic_utils_host_address_get_connectivity(temp,
+			connectivity_type);
+
 	resource->connectivity_type = connectivity_type;
+	resource->host_address = ic_utils_strdup(temp);
 	resource->uri_path = ic_utils_strdup(uri_path);
 	resource->policies = policies;
 	resource->types = icl_resource_types_ref(resource_types);
@@ -225,6 +221,7 @@ API int iotcon_remote_resource_clone(iotcon_remote_resource_h src,
 	resource->uri_path = ic_utils_strdup(src->uri_path);
 	resource->host_address = ic_utils_strdup(src->host_address);
 	resource->connectivity_type = src->connectivity_type;
+	resource->connectivity_options = src->connectivity_options;
 	resource->device_id = ic_utils_strdup(src->device_id);
 	resource->device_name = ic_utils_strdup(src->device_name);
 	resource->policies = src->policies;

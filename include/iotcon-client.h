@@ -358,7 +358,18 @@ typedef bool (*iotcon_found_resource_cb)(iotcon_remote_resource_h resource,
  * @privilege %http://tizen.org/privilege/internet
  *
  * @remarks @a host_address should be in the format coap://address:port.\n
- * (ex. coaps://[fe80::ae5a:14ff:fe24:b8fe]:12345, or coaps://192.168.1.10:12345)
+ * (ex. coaps://[fe80::ae5a:14ff:fe24:b8fe]:12345, or coaps://192.168.1.10:12345)\n
+ * @a connectivity_type can be set with extra options.
+ * If @a connectivity_type is set without IOTCON_CONNECTIVITY_IPV4_ONLY
+ * and IOTCON_CONNECTIVITY_IPV6_ONLY, the resources are discovered by default setting
+ * of IoTivity(IPv6 is preferred over IPv4).\n
+ * If there are no preference options(PREFER_XXX), resources will reply using each of
+ * opened protocol(TCP/UDP).
+ * Therefore, you can get remote resource handles which include different host address,
+ * but indicates same resource.\n (coaps://192.168.0.2:1234/res/light,
+ * coaps+tcp://192.168.0.2/1235/res/light)
+ * @a query can be set using specific resource types, or resource interfaces.
+ * If @a query is NULL, every resource discovered is listed.
  *
  * @param[in] host_address The address or addressable name of server
  * @param[in] connectivity_type The connectivity type
@@ -380,7 +391,7 @@ typedef bool (*iotcon_found_resource_cb)(iotcon_remote_resource_h resource,
  * @see iotcon_set_timeout()
  */
 int iotcon_find_resource(const char *host_address,
-		iotcon_connectivity_type_e connectivity_type,
+		int connectivity_type,
 		iotcon_query_h query,
 		iotcon_found_resource_cb cb,
 		void *user_data);
@@ -419,7 +430,12 @@ typedef bool (*iotcon_device_info_cb)(iotcon_device_info_h device_info,
  * @privilege %http://tizen.org/privilege/internet
  *
  * @remarks @a host_address should be in the format coap://address:port.\n
- * (ex. coap://[fe80::ae5a:14ff:fe24:b8fe]:12345, or coap://192.168.1.10:12345)
+ * (ex. coap://[fe80::ae5a:14ff:fe24:b8fe]:12345, or coap://192.168.1.10:12345)\n
+ * @a connectivity_type can be set with extra options.
+ * If @a connectivity_type is set without IOTCON_CONNECTIVITY_IPV4_ONLY
+ * and IOTCON_CONNECTIVITY_IPV6_ONLY, device informations are discovered by default setting
+ * of IoTivity(IPv6 is preferred over IPv4).\n
+ * If there are no preference options(PREFER_XXX), it will reply using UDP.
  *
  * @param[in] host_address The host address of remote server
  * @param[in] connectivity_type The connectivity type
@@ -443,7 +459,7 @@ typedef bool (*iotcon_device_info_cb)(iotcon_device_info_h device_info,
  * @see iotcon_set_timeout()
  */
 int iotcon_find_device_info(const char *host_address,
-		iotcon_connectivity_type_e connectivity_type,
+		int connectivity_type,
 		iotcon_query_h query,
 		iotcon_device_info_cb cb,
 		void *user_data);
@@ -505,7 +521,12 @@ typedef bool (*iotcon_platform_info_cb)(iotcon_platform_info_h platform_info,
  * @privilege %http://tizen.org/privilege/internet
  *
  * @remarks @a host_address should be in the format coap://address:port.\n
- * (ex. coap://[fe80::ae5a:14ff:fe24:b8fe]:12345, or coap://192.168.1.10:12345)
+ * (ex. coap://[fe80::ae5a:14ff:fe24:b8fe]:12345, or coap://192.168.1.10:12345)\n
+ * @a connectivity_type can be set with extra options.
+ * If @a connectivity_type is set without IOTCON_CONNECTIVITY_IPV4_ONLY
+ * and IOTCON_CONNECTIVITY_IPV6_ONLY, platform informations are discovered by default setting
+ * of IoTivity(IPv6 is preferred over IPv4).\n
+ * If there are no preference options(PREFER_XXX), it will reply using UDP.
  *
  * @param[in] host_address The host address of remote server
  * @param[in] connectivity_type The connectivity type
@@ -530,7 +551,7 @@ typedef bool (*iotcon_platform_info_cb)(iotcon_platform_info_h platform_info,
  * @see iotcon_set_timeout()
  */
 int iotcon_find_platform_info(const char *host_address,
-		iotcon_connectivity_type_e connectivity_type,
+		int connectivity_type,
 		iotcon_query_h query,
 		iotcon_platform_info_cb cb,
 		void *user_data);

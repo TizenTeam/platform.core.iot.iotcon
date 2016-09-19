@@ -222,13 +222,14 @@ static int _provisioning_device_get_host_address(OCProvisionDev_t *device,
 {
 	FN_CALL;
 	char host[PATH_MAX] = {0};
-	int temp_connectivity_type = CT_DEFAULT;
 
 	if (device->connType & CT_ADAPTER_IP) {
 		if (device->connType & CT_IP_USE_V4) {
-			temp_connectivity_type = IOTCON_CONNECTIVITY_IPV4;
+			snprintf(host, sizeof(host), "%s:%d", device->endpoint.addr,
+					device->endpoint.port);
 		} else if (device->connType & CT_IP_USE_V6) {
-			temp_connectivity_type = IOTCON_CONNECTIVITY_IPV6;
+			snprintf(host, sizeof(host), "[%s]:%d", device->endpoint.addr,
+					device->endpoint.port);
 		} else {
 			ERR("Invalid Connectivity Type(%d)", device->connType);
 			return IOTCON_ERROR_IOTIVITY;
@@ -238,22 +239,8 @@ static int _provisioning_device_get_host_address(OCProvisionDev_t *device,
 		return IOTCON_ERROR_IOTIVITY;
 	}
 
-	switch (temp_connectivity_type) {
-	case IOTCON_CONNECTIVITY_IPV6:
-		snprintf(host, sizeof(host), "[%s]:%d", device->endpoint.addr,
-				device->endpoint.port);
-		break;
-	case IOTCON_CONNECTIVITY_IPV4:
-		snprintf(host, sizeof(host), "%s:%d", device->endpoint.addr,
-				device->endpoint.port);
-		break;
-	default:
-		ERR("Invalid Connectivity Type(%d)", device->connType);
-		return IOTCON_ERROR_IOTIVITY;
-	}
-
 	*host_address = strdup(host);
-	*connectivity_type = temp_connectivity_type;
+	*connectivity_type = IOTCON_CONNECTIVITY_IP;
 
 	return IOTCON_ERROR_NONE;
 }

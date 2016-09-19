@@ -86,27 +86,11 @@ API int iotcon_add_presence_cb(const char *host_address,
 	RETV_IF(resource_type && (false == icl_resource_check_type(resource_type)),
 			IOTCON_ERROR_INVALID_PARAMETER);
 
-	if ((IOTCON_MULTICAST_ADDRESS == host_address || '\0' == host_address[0])
-			&& (IOTCON_CONNECTIVITY_IPV4 != connectivity_type
-				&& IOTCON_CONNECTIVITY_ALL != connectivity_type)) {
-		ERR("Multicast is available only if IPV4");
-		return IOTCON_ERROR_INVALID_PARAMETER;
-	}
-
-	switch (connectivity_type) {
-	case IOTCON_CONNECTIVITY_IPV4:
-	case IOTCON_CONNECTIVITY_IPV6:
-	case IOTCON_CONNECTIVITY_ALL:
-		ret = icl_ioty_add_presence_cb(host_address, connectivity_type, resource_type,
-				cb, user_data, presence_handle);
-		if (IOTCON_ERROR_NONE != ret) {
-			ERR("icl_ioty_add_presence_cb() Fail(%d)", ret);
-			return ret;
-		}
-		break;
-	default:
-		ERR("Invalid Connectivity Type(%d)", connectivity_type);
-		return IOTCON_ERROR_INVALID_PARAMETER;
+	ret = icl_ioty_add_presence_cb(host_address, connectivity_type, resource_type,
+			cb, user_data, presence_handle);
+	if (IOTCON_ERROR_NONE != ret) {
+		ERR("icl_ioty_add_presence_cb() Fail(%d)", ret);
+		return ret;
 	}
 
 	return IOTCON_ERROR_NONE;
@@ -116,28 +100,17 @@ API int iotcon_add_presence_cb(const char *host_address,
 API int iotcon_remove_presence_cb(iotcon_presence_h presence)
 {
 	FN_CALL;
-	int ret, connectivity_type;
+	int ret;
 
 	RETV_IF(false == ic_utils_check_ocf_feature(), IOTCON_ERROR_NOT_SUPPORTED);
 	RETV_IF(false == ic_utils_check_permission(IC_PERMISSION_INTERNET),
 			IOTCON_ERROR_PERMISSION_DENIED);
 	RETV_IF(NULL == presence, IOTCON_ERROR_INVALID_PARAMETER);
 
-	connectivity_type = presence->connectivity_type;
-
-	switch (connectivity_type) {
-	case IOTCON_CONNECTIVITY_IPV4:
-	case IOTCON_CONNECTIVITY_IPV6:
-	case IOTCON_CONNECTIVITY_ALL:
-		ret = icl_ioty_remove_presence_cb(presence);
-		if (IOTCON_ERROR_NONE != ret) {
-			ERR("icl_ioty_remove_presence_cb() Fail(%d)", ret);
-			return ret;
-		}
-		break;
-	default:
-		ERR("Invalid Connectivity Type(%d)", connectivity_type);
-		return IOTCON_ERROR_INVALID_PARAMETER;
+	ret = icl_ioty_remove_presence_cb(presence);
+	if (IOTCON_ERROR_NONE != ret) {
+		ERR("icl_ioty_remove_presence_cb() Fail(%d)", ret);
+		return ret;
 	}
 
 	return IOTCON_ERROR_NONE;

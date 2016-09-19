@@ -49,6 +49,7 @@ struct icl_remote_resource {
 	iotcon_resource_types_h types;
 	iotcon_resource_interfaces_h ifaces;
 	iotcon_connectivity_type_e connectivity_type;
+	int connectivity_options;
 	int64_t observe_handle;
 	int checking_interval;
 	unsigned int timer_id;

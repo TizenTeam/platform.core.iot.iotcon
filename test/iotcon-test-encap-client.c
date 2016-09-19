@@ -235,6 +235,7 @@ int main(int argc, char **argv)
 	int ret;
 	GMainLoop *loop;
 	iotcon_query_h query;
+	int connectivity_type;
 	iotcon_remote_resource_h resource;
 
 	loop = g_main_loop_new(NULL, FALSE);
@@ -259,9 +260,12 @@ int main(int argc, char **argv)
 		return -1;
 	}
 
+	connectivity_type = IOTCON_CONNECTIVITY_IP | IOTCON_CONNECTIVITY_IPV4_ONLY
+		| IOTCON_CONNECTIVITY_PREFER_TCP;
+
 	/* find door typed resources */
-	ret = iotcon_find_resource(IOTCON_MULTICAST_ADDRESS, IOTCON_CONNECTIVITY_ALL,
-			query, _found_resource, &resource);
+	ret = iotcon_find_resource(IOTCON_MULTICAST_ADDRESS, connectivity_type, query,
+			_found_resource, &resource);
 	if (IOTCON_ERROR_NONE != ret) {
 		ERR("iotcon_find_resource() Fail(%d)", ret);
 		iotcon_query_destroy(query);

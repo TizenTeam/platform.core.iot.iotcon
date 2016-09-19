@@ -357,3 +357,60 @@ void ic_utils_cond_timedwait(int cond_type, int mutex_type, int polling_interval
 			&ts);
 	WARN_IF(ETIMEDOUT != ret && 0 != ret, "pthread_cond_timedwait() Fail(%d)", ret);
 }
+
+int ic_utils_host_address_get_connectivity(const char *host_address, int conn_type)
+{
+	int options;
+
+	if (NULL == host_address || IOTCON_CONNECTIVITY_ALL == conn_type) {
+		return 0;
+	}
+
+	/* IOTCON_CONNECTIVITY_IP == conn_type */
+	if (IC_EQUAL == strncmp(IC_COAP, host_address, strlen(IC_COAP))) {
+		options = IC_UTILS_CONNECTIVITY_UDP;
+		if ('[' == host_address[strlen(IC_COAP)])
+			options |= IC_UTILS_CONNECTIVITY_IPV6;
+		else
+			options |= IC_UTILS_CONNECTIVITY_IPV4;
+	} else if (IC_EQUAL == strncmp(IC_COAPS, host_address, strlen(IC_COAPS))) {
+		options = IC_UTILS_CONNECTIVITY_UDP;
+		if ('[' == host_address[strlen(IC_COAPS)])
+			options |= IC_UTILS_CONNECTIVITY_IPV6;
+		else
+			options |= IC_UTILS_CONNECTIVITY_IPV4;
+	} else if (IC_EQUAL == strncmp(IC_COAP_TCP, host_address, strlen(IC_COAP_TCP))) {
+		options = IC_UTILS_CONNECTIVITY_TCP;
+		if ('[' == host_address[strlen(IC_COAP_TCP)])
+			options |= IC_UTILS_CONNECTIVITY_IPV6;
+		else
+			options |= IC_UTILS_CONNECTIVITY_IPV4;
+	} else if (IC_EQUAL == strncmp(IC_COAPS_TCP, host_address, strlen(IC_COAPS_TCP))) {
+		options = IC_UTILS_CONNECTIVITY_TCP;
+		if ('[' == host_address[strlen(IC_COAPS_TCP)])
+			options |= IC_UTILS_CONNECTIVITY_IPV6;
+		else
+			options |= IC_UTILS_CONNECTIVITY_IPV4;
+	} else {
+		options = IC_UTILS_CONNECTIVITY_UDP;
+		if ('[' == host_address[strlen(IC_COAPS_TCP)])
+			options |= IC_UTILS_CONNECTIVITY_IPV6;
+		else
+			options |= IC_UTILS_CONNECTIVITY_IPV4;
+	}
+
+	return options;
+}
+
+bool ic_utils_check_connectivity_type(int conn_type)
+{
+	if ((IOTCON_CONNECTIVITY_PREFER_UDP & conn_type)
+			&& (IOTCON_CONNECTIVITY_PREFER_TCP & conn_type))
+		return false;
+
+	if ((IOTCON_CONNECTIVITY_IPV4_ONLY & conn_type)
+			&& (IOTCON_CONNECTIVITY_IPV6_ONLY & conn_type))
+		return false;
+
+	return true;
+}

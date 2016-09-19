@@ -20,12 +20,14 @@
 #include "iotcon-types.h"
 
 /* iotcon -> oic */
-OCConnectivityType ic_ioty_convert_connectivity_type(
-		iotcon_connectivity_type_e conn_type);
+OCConnectivityType ic_ioty_convert_connectivity_type(iotcon_connectivity_type_e conn_type,
+		int conn_options);
 OCMethod ic_ioty_convert_request_type(iotcon_request_type_e req_type);
 OCEntityHandlerResult ic_ioty_convert_response_result(iotcon_response_result_e result);
 OCQualityOfService ic_ioty_convert_qos(iotcon_qos_e qos);
-int ic_ioty_convert_connectivity(const char *host_address, int conn_type,
+int ic_ioty_convert_host_address(const char *host_address,
+		iotcon_connectivity_type_e conn_type,
+		int conn_options,
 		OCDevAddr *dev_addr);
 uint8_t ic_ioty_convert_policies(uint8_t policies);
 

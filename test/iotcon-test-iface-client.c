@@ -425,8 +425,8 @@ int main(int argc, char **argv)
 	}
 
 	/* find room typed resources */
-	ret = iotcon_find_resource(IOTCON_MULTICAST_ADDRESS, IOTCON_CONNECTIVITY_ALL,
-			query, _found_resource, NULL);
+	ret = iotcon_find_resource(IOTCON_MULTICAST_ADDRESS, IOTCON_CONNECTIVITY_ALL
+			| IOTCON_CONNECTIVITY_PREFER_UDP, query, _found_resource, NULL);
 	if (IOTCON_ERROR_NONE != ret) {
 		ERR("iotcon_find_resource() Fail(%d)", ret);
 		iotcon_query_destroy(query);

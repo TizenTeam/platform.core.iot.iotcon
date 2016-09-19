@@ -16,11 +16,11 @@
 #ifndef __IOTCON_INTERNAL_LOG_H__
 #define __IOTCON_INTERNAL_LOG_H__
 
-#define IC_LOG_RED "\033[0;31m"
-#define IC_LOG_GREEN "\033[0;32m"
-#define IC_LOG_BROWN "\033[0;33m"
-#define IC_LOG_BLUE "\033[0;34m"
-#define IC_LOG_END "\033[0;m"
+#define IC_LOG_RED "\033[31m"
+#define IC_LOG_GREEN "\033[32m"
+#define IC_LOG_BROWN "\033[33m"
+#define IC_LOG_BLUE "\033[34m"
+#define IC_LOG_END "\033[0m"
 
 #undef _DBG
 #undef _INFO

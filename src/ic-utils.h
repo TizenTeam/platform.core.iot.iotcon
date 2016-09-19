@@ -42,6 +42,9 @@ void ic_utils_cond_polling_destroy();
 void ic_utils_cond_signal(int type);
 void ic_utils_cond_timedwait(int cond_type, int mutex_type, int polling_interval);
 
+int ic_utils_host_address_get_connectivity(const char *host_address, int conn_type);
+bool ic_utils_check_connectivity_type(int conn_type);
+
 enum IC_UTILS_MUTEX {
 	IC_UTILS_MUTEX_INIT,
 	IC_UTILS_MUTEX_IOTY,
@@ -52,6 +55,13 @@ enum IC_UTILS_MUTEX {
 enum IC_UTILS_COND {
 	IC_UTILS_COND_POLLING,
 	IC_UTILS_COND_MAX
+};
+
+enum IC_UTILS_CONNECTIVITY {
+	IC_UTILS_CONNECTIVITY_IPV4 = (1 << 0),
+	IC_UTILS_CONNECTIVITY_IPV6 = (1 << 1),
+	IC_UTILS_CONNECTIVITY_UDP = (1 << 2),
+	IC_UTILS_CONNECTIVITY_TCP = (1 << 3)
 };
 
 #endif /* __IOTCON_INTERNAL_UTILITY_H__ */
