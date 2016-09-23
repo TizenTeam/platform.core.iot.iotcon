@@ -57,6 +57,8 @@ extern "C" {
  * @privilege %http://tizen.org/privilege/network.get
  * @privilege %http://tizen.org/privilege/internet
  *
+ * @param[in] file_path The path of SVR(Secure Virtual Resources) DB
+ *
  * @remarks The @a file_path point to a file for handling secure virtual resources.
  * The file that is CBOR(Concise Binary Object Representation)-format must already exist
  * in @a file_path. We recommend to use application-local file for @a file_path.\n

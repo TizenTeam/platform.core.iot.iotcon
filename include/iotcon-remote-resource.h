@@ -881,6 +881,7 @@ int iotcon_remote_resource_get_cached_representation(
  *
  * @since_tizen 3.0
  *
+ * @param[in] resource The handle of the remote resource
  * @param[out] interval Seconds for time interval
  *
  * @return 0 on success, otherwise a negative error value.
@@ -904,6 +905,7 @@ int iotcon_remote_resource_get_checking_interval(iotcon_remote_resource_h resour
  *
  * @since_tizen 3.0
  *
+ * @param[in] resource The handle of the remote resource
  * @param[in] interval Seconds for time interval (must be in range from 1 to 3600)
  *
  * @return 0 on success, otherwise a negative error value.
