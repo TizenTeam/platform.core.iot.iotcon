@@ -47,6 +47,7 @@ API int iotcon_remote_resource_start_caching(iotcon_remote_resource_h resource,
 
 	INFO("Start Caching");
 
+	icl_remote_resource_ref(resource);
 	ret = icl_ioty_remote_resource_start_caching(resource, cb, user_data);
 	if (IOTCON_ERROR_NONE != ret) {
 		ERR("icl_ioty_remote_resource_start_caching() Fail(%d)", ret);

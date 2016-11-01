@@ -226,6 +226,8 @@ void ic_ioty_free_resource_list(gpointer data)
 {
 	iotcon_remote_resource_h resource = data;
 
+	resource->is_found = false;
+
 	iotcon_remote_resource_destroy(resource);
 }
 
