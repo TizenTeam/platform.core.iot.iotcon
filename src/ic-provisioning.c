@@ -35,6 +35,9 @@
 
 #define ICL_PROVISIONING_TIMEOUT_MAX 10
 
+static GQueue *icl_register_queue;
+static pthread_mutex_t icl_register_mutex = PTHREAD_MUTEX_INITIALIZER;
+
 struct icl_provisioning_randompin_cb_container {
 	iotcon_provisioning_randompin_cb cb;
 	void *user_data;
@@ -222,6 +225,24 @@ API int iotcon_provisioning_set_randompin_cb(iotcon_provisioning_randompin_cb cb
 }
 
 
+static void _provisioning_register_mutex_lock()
+{
+	int ret;
+
+	ret = pthread_mutex_lock(&icl_register_mutex);
+	WARN_IF(0 != ret, "pthread_mutex_lock() Fail(%d)", ret);
+}
+
+
+static void _provisioning_register_mutex_unlock()
+{
+	int ret;
+
+	ret = pthread_mutex_unlock(&icl_register_mutex);
+	WARN_IF(0 != ret, "pthread_mutex_unlock() Fail(%d)", ret);
+}
+
+
 static void _provisioning_ownership_transfer_cb_container_destroy(
 		struct icl_provisioning_ownership_transfer_cb_container *container)
 {
@@ -268,14 +289,50 @@ static void _provisioning_ownership_transfer_cb(void *ctx, int n_of_res,
 }
 
 
+static gboolean _provisioning_register_unowned_device(gpointer p)
+{
+	int ret;
+	OCProvisionDev_t *dev_list;
+	struct icl_provisioning_ownership_transfer_cb_container *container;
+
+	_provisioning_register_mutex_lock();
+	if (TRUE == g_queue_is_empty(icl_register_queue)) {
+		g_queue_free(icl_register_queue);
+		icl_register_queue = NULL;
+		_provisioning_register_mutex_unlock();
+		return G_SOURCE_REMOVE;
+	}
+
+	container = g_queue_pop_tail(icl_register_queue);
+	_provisioning_register_mutex_unlock();
+
+	dev_list = icl_provisioning_device_get_device(container->device);
+
+	ret = icl_ioty_mutex_lock();
+	if (IOTCON_ERROR_NONE != ret) {
+		ERR("icl_ioty_mutex_lock() Fail(%d)", ret);
+		g_queue_push_tail(icl_register_queue, container);
+		return G_SOURCE_CONTINUE;
+	}
+
+	ret = OCDoOwnershipTransfer(container, dev_list, _provisioning_ownership_transfer_cb);
+	icl_ioty_mutex_unlock();
+	if (OC_STACK_OK != ret) {
+		ERR("OCDoOwnershipTransfer() Fail(%d)", ret);
+		_provisioning_ownership_transfer_cb_container_destroy(container);
+		return G_SOURCE_CONTINUE;
+	}
+
+	return G_SOURCE_CONTINUE;
+}
+
+
 API int iotcon_provisioning_register_unowned_device(
 		iotcon_provisioning_device_h device,
 		iotcon_provisioning_ownership_transfer_cb cb,
 		void *user_data)
 {
 	FN_CALL;
-	int ret;
-	OCProvisionDev_t *dev_list;
 	struct icl_provisioning_ownership_transfer_cb_container *container;
 
 	RETV_IF(false == ic_utils_check_ocf_feature(), IOTCON_ERROR_NOT_SUPPORTED);
@@ -298,22 +355,13 @@ API int iotcon_provisioning_register_unowned_device(
 
 	container->device = icl_provisioning_device_ref(device);
 
-	dev_list = icl_provisioning_device_get_device(device);
-
-	ret = icl_ioty_mutex_lock();
-	if (IOTCON_ERROR_NONE != ret) {
-		ERR("icl_ioty_mutex_lock() Fail(%d)", ret);
-		_provisioning_ownership_transfer_cb_container_destroy(container);
-		return ret;
+	_provisioning_register_mutex_lock();
+	if (NULL == icl_register_queue) {
+		icl_register_queue = g_queue_new();
+		g_timeout_add_seconds(2, _provisioning_register_unowned_device, NULL);
 	}
-
-	ret = OCDoOwnershipTransfer(container, dev_list, _provisioning_ownership_transfer_cb);
-	icl_ioty_mutex_unlock();
-	if (OC_STACK_OK != ret) {
-		ERR("OCDoOwnershipTransfer() Fail(%d)", ret);
-		_provisioning_ownership_transfer_cb_container_destroy(container);
-		return _provisioning_parse_oic_error(ret);
-	}
+	g_queue_push_head(icl_register_queue, container);
+	_provisioning_register_mutex_unlock();
 
 	return IOTCON_ERROR_NONE;
 }

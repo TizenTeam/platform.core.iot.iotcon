@@ -134,6 +134,7 @@ static icl_provisioning_find_cb_s* _provisioning_find_cb_ref(
 static int _provisioning_find_create_device(const char *addr,
 		const uint16_t port,
 		OCTransportAdapter adapter,
+		OCTransportFlags flags,
 		OCConnectivityType conn_type,
 		OicSecDoxm_t *doxm,
 		OCProvisionDev_t **device_list)
@@ -153,6 +154,7 @@ static int _provisioning_find_create_device(const char *addr,
 	snprintf(temp->endpoint.addr, sizeof(temp->endpoint.addr), "%s", addr);
 	temp->endpoint.port = port;
 	temp->endpoint.adapter = adapter;
+	temp->endpoint.flags = flags;
 	temp->connType = conn_type;
 	temp->doxm = doxm;
 	temp->securePort = DEFAULT_SECURE_PORT;
@@ -612,8 +614,13 @@ static OCStackApplicationResult _provisioning_find_cb(void *ctx, OCDoHandle hand
 
 	container->cb_data = _provisioning_find_cb_ref(ctx);
 
-	ret = _provisioning_find_create_device(resp->devAddr.addr, resp->devAddr.port,
-			resp->devAddr.adapter, resp->connType, doxm, &container->oic_device);
+	ret = _provisioning_find_create_device(resp->devAddr.addr,
+			resp->devAddr.port,
+			resp->devAddr.adapter,
+			resp->devAddr.flags,
+			resp->connType,
+			doxm,
+			&container->oic_device);
 	if (OC_STACK_OK != ret) {
 		ERR("_provisioning_find_create_device() Fail(%d)", ret);
 		DeleteDoxmBinData(doxm);
