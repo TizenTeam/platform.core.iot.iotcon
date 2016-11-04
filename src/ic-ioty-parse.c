@@ -258,8 +258,7 @@ static int _parse_remote_resource(OCDevAddr *dev_addr,
 				coap_str = IC_COAPS_TCP;
 			else
 				coap_str = IC_COAP_TCP;
-		}
-		else if (IC_UTILS_CONNECTIVITY_UDP & conn_options) {
+		} else if (IC_UTILS_CONNECTIVITY_UDP & conn_options) {
 			if (IOTCON_RESOURCE_SECURE & policies)
 				coap_str = IC_COAPS;
 			else

@@ -362,9 +362,8 @@ int ic_utils_host_address_get_connectivity(const char *host_address, int conn_ty
 {
 	int options;
 
-	if (NULL == host_address || IOTCON_CONNECTIVITY_ALL == conn_type) {
+	if (NULL == host_address || IOTCON_CONNECTIVITY_ALL == conn_type)
 		return 0;
-	}
 
 	/* IOTCON_CONNECTIVITY_IP == conn_type */
 	if (IC_EQUAL == strncmp(IC_COAP, host_address, strlen(IC_COAP))) {
