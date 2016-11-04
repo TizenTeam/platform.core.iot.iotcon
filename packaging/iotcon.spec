@@ -102,6 +102,7 @@ rm -rf %{buildroot}
 mkdir -p %{buildroot}/%{_datadir}/license
 cp LICENSE.APLv2 %{buildroot}/%{_datadir}/license/%{name}
 cp LICENSE.APLv2 %{buildroot}/%{_datadir}/license/%{name}-test
+cp LICENSE.APLv2 %{buildroot}/%{_datadir}/license/%{name}-devel
 %else
 mkdir -p %{buildroot}/usr/share/%{name}
 cp %{name}-network-get %{buildroot}/usr/share/%{name}/%{name}-network-get
@@ -140,6 +141,11 @@ chsmack -a "*" /usr/share/%{name}/%{name}-network-get
 
 %files devel
 %defattr(-,root,root,-)
+%if 0%{?tizen_version_major} < 3
+%{_datadir}/license/%{name}
+%else
+%license LICENSE.APLv2
+%endif
 %{_libdir}/lib%{name}.so
 %{_libdir}/pkgconfig/%{name}.pc
 %{_includedir}/%{name}/*.h
