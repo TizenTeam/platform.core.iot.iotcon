@@ -208,7 +208,7 @@ int icl_ioty_remove_generated_pin_cb(iotcon_generated_pin_cb cb)
 		return IOTCON_ERROR_NO_DATA;
 	}
 
-	if (1 == g_list_length(icl_generated_pin_cb_list)) {
+	if (1 > g_list_length(icl_generated_pin_cb_list)) {
 		ERR("It is required at least one function");
 		return IOTCON_ERROR_INVALID_PARAMETER;
 	}
