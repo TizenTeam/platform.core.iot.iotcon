@@ -851,7 +851,7 @@ OCEntityHandlerResult icl_ioty_ocprocess_lite_request_cb(OCEntityHandlerFlag fla
 	FN_CALL;
 	iotcon_request_type_e req_type;
 	iotcon_lite_resource_h resource = user_data;
-	iotcon_representation_h repr;
+	iotcon_representation_h repr = NULL;
 	iotcon_response_h res = NULL;
 
 	RETV_IF(NULL == resource, OC_EH_ERROR);
@@ -868,8 +868,6 @@ OCEntityHandlerResult icl_ioty_ocprocess_lite_request_cb(OCEntityHandlerFlag fla
 	/* representation */
 	if (request->payload)
 		ic_ioty_parse_oic_rep_payload((OCRepPayload*)request->payload, true, &repr);
-	else
-		repr = NULL;
 
 	res = calloc(1, sizeof(struct icl_resource_response));
 	if (NULL == res) {
@@ -886,6 +884,10 @@ OCEntityHandlerResult icl_ioty_ocprocess_lite_request_cb(OCEntityHandlerFlag fla
 		g_idle_add(_icl_ioty_ocprocess_lite_resource_response_idle_cb, res);
 		break;
 	case IOTCON_REQUEST_POST:
+		if(NULL == repr) {
+			ERR("repr is NULL!!");
+			break;
+		}
 		if (resource->cb) {
 			if (false == resource->cb(resource, repr->attributes, resource->cb_data)) {
 				res->result = IOTCON_RESPONSE_ERROR;

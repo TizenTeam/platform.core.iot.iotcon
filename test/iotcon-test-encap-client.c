@@ -86,16 +86,10 @@ static void _representation_changed_cb(iotcon_remote_resource_h resource,
 		return;
 	}
 
-	switch (opened) {
-	case true:
-		INFO("door is opened");
-		break;
-	case false:
-		INFO("door is closed");
-		break;
-	default:
-		break;
-	}
+	if(opened)
+		INFO("[Door] opened.");
+	else
+		INFO("[Door] closed.");
 }
 
 static bool _found_resource(iotcon_remote_resource_h resource, iotcon_error_e result,

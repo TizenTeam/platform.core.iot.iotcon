@@ -406,7 +406,7 @@ static int _icl_ioty_fill_oic_rep_payload_value_array(OCRepPayload *payload,
 			if (NULL == attributes_arr[i]) {
 				ERR("OCRepPayloadCreate() Fail");
 				free(attributes_arr);
-				return ret;
+				return IOTCON_ERROR_OUT_OF_MEMORY;
 			}
 			ret = _icl_ioty_fill_oic_rep_payload_value(attributes_arr[i],
 					((icl_val_attributes_s*)node->data)->attributes);

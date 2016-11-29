@@ -156,7 +156,7 @@ int icl_create_presence_cb_data(iotcon_presence_h presence,
 	RETV_IF(NULL == presence_cb_data, IOTCON_ERROR_INVALID_PARAMETER);
 
 	cd = calloc(1, sizeof(icl_presence_cb_s));
-	if (NULL == presence_cb_data) {
+	if (NULL == cd) {
 		ERR("calloc() Fail(%d)", errno);
 		return IOTCON_ERROR_OUT_OF_MEMORY;
 	}

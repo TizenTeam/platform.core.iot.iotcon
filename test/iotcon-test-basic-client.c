@@ -71,16 +71,10 @@ static void _on_observe(iotcon_remote_resource_h resource, iotcon_error_e err,
 	}
 
 	INFO("notify_cb information");
-	switch (opened) {
-	case true:
+	if(opened)
 		INFO("[Door] opened.");
-		break;
-	case false:
+	else
 		INFO("[Door] closed.");
-		break;
-	default:
-		break;
-	}
 
 	if (5 == i++) {
 		iotcon_remote_resource_observe_deregister(resource);
