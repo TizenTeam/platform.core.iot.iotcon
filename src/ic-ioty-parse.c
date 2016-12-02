@@ -249,6 +249,9 @@ static int _parse_remote_resource(OCDevAddr *dev_addr,
 	iotcon_remote_resource_h temp;
 	iotcon_connectivity_type_e conn_type;
 
+	DBG("dev_addr: adapter [%d], flags [%d], port [%d], addr [%s]",
+		dev_addr->adapter, dev_addr->flags, dev_addr->port, dev_addr->addr);
+
 	_ioty_parse_oic_transport(adapter, dev_addr->flags, &conn_type, &conn_options);
 
 	switch (conn_type) {

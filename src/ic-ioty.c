@@ -727,30 +727,19 @@ int icl_ioty_add_presence_cb(const char *host_address,
 		iotcon_presence_h *presence_handle)
 {
 	int ret;
-	int index = 0;
 	int conn_extra;
 	int conn_options;
 	OCDoHandle handle;
-	const char *address;
 	char uri[PATH_MAX] = {0};
 	OCCallbackData cbdata = {0};
 	OCConnectivityType oic_conn_type;
 	iotcon_presence_h presence = NULL;
+	OCDevAddr dev_addr = {0};
 
 	RETV_IF(NULL == cb, IOTCON_ERROR_INVALID_PARAMETER);
 	RETV_IF(NULL == presence_handle, IOTCON_ERROR_INVALID_PARAMETER);
 
-	if (NULL == host_address)
-		address = IC_MULTICAST_ADDRESS;
-	else
-		address = host_address;
-
-	if (IC_EQUAL == strncmp(IC_COAPS, address, strlen(IC_COAPS)))
-		index = strlen(IC_COAPS);
-	else if (IC_EQUAL == strncmp(IC_COAP, address, strlen(IC_COAP)))
-		index = strlen(IC_COAP);
-
-	snprintf(uri, sizeof(uri), "%s%s", &address[index], OC_RSRVD_PRESENCE_URI);
+	snprintf(uri, sizeof(uri), "%s", OC_RSRVD_PRESENCE_URI);
 
 	presence = calloc(1, sizeof(struct icl_presence));
 	if (NULL == presence) {
@@ -783,14 +772,32 @@ int icl_ioty_add_presence_cb(const char *host_address,
 	oic_conn_type = ic_ioty_convert_connectivity_type(presence->connectivity_type,
 			conn_options);
 
+	if (NULL != host_address) {
+		ret = ic_ioty_convert_host_address(host_address,
+			connectivity_type, conn_options, &dev_addr);
+		if (IOTCON_ERROR_NONE != ret) {
+			ERR("ic_ioty_convert_host_address() Fail(%d)", ret);
+			icl_destroy_presence(presence);
+			return ret;
+		}
+	}
+
 	ret = icl_ioty_mutex_lock();
 	if (IOTCON_ERROR_NONE != ret) {
 		ERR("icl_ioty_mutex_lock() Fail(%d)", ret);
 		icl_destroy_presence(presence);
 		return ret;
 	}
+	DBG("uri:[%s], oic_conn_type:[%d(0x%x)]", uri, oic_conn_type, oic_conn_type);
+	if (NULL != host_address) {
+		DBG("dev_addr.addr:[%s], dev_addr.port:[%d]", dev_addr.addr, dev_addr.port);
+		ret = OCDoResource(&handle, OC_REST_PRESENCE, uri, &dev_addr, NULL, oic_conn_type,
+				OC_LOW_QOS, &cbdata, NULL, 0);
+	} else {
 	ret = OCDoResource(&handle, OC_REST_PRESENCE, uri, NULL, NULL, oic_conn_type,
 			OC_LOW_QOS, &cbdata, NULL, 0);
+	}
+
 	icl_ioty_mutex_unlock();
 	presence->handle = handle;
 
