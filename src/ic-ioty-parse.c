@@ -21,6 +21,7 @@
 
 #include <octypes.h>
 #include <ocpayload.h>
+#include <ocstack.h>
 
 #include "iotcon.h"
 #include "ic.h"
@@ -447,16 +448,21 @@ int ic_ioty_parse_oic_device_payload(OCPayload *payload,
 		return IOTCON_ERROR_OUT_OF_MEMORY;
 	}
 
-	if (payload->deviceName)
-		info->device_name = strdup(payload->deviceName);
-	else
-		info->device_name = strdup("");
+        OCStackResult result ;
+
+
+        result = OCGetPropertyValue(payload->type, OC_RSRVD_DEVICE_NAME, info->device_name);
+//	if (payload->deviceName)
+//		info->device_name = strdup(payload->deviceName);
+//	else
+//		info->device_name = strdup("");
 	if (NULL == info->device_name)
 		ERR("strdup(device_name) Fail(%d)", errno);
-
-	info->spec_ver = ic_utils_strdup(payload->specVersion);
-	info->device_id = ic_utils_strdup(payload->sid);
-	info->data_model_ver = OCCreateString(payload->dataModelVersions);
+        result = OCGetPropertyValue(payload->type, OC_RSRVD_SPEC_VERSION, info->spec_ver);
+//	info->device_id = ic_utils_strdup(payload->sid); //  OC_RSRVD_DEVICE_ID   
+        result = OCGetPropertyValue(payload->type, OC_RSRVD_DEVICE_ID, info->device_id);
+        //info->data_model_ver = OCCreateString(payload->dataModelVersions);
+        result = OCGetPropertyValue(payload->type, OC_RSRVD_DATA_MODEL_VERSION, info->data_model_ver);
 
 	*device_info = info;
 
@@ -476,27 +482,21 @@ int ic_ioty_parse_oic_platform_payload(OCPayload *payload,
 		ERR("calloc() Fail(%d)", errno);
 		return IOTCON_ERROR_OUT_OF_MEMORY;
 	}
+        OCStackResult result ;
 
-	info->platform_id  = ic_utils_strdup(payload->info.platformID);
-	info->manuf_name = ic_utils_strdup(payload->info.manufacturerName);
-	if (payload->info.manufacturerUrl)
-		info->manuf_url = ic_utils_strdup(payload->info.manufacturerUrl);
-	if (payload->info.modelNumber)
-		info->model_number = ic_utils_strdup(payload->info.modelNumber);
-	if (payload->info.dateOfManufacture)
-		info->date_of_manuf = ic_utils_strdup(payload->info.dateOfManufacture);
-	if (payload->info.platformVersion)
-		info->platform_ver = ic_utils_strdup(payload->info.platformVersion);
-	if (payload->info.operatingSystemVersion)
-		info->os_ver = ic_utils_strdup(payload->info.operatingSystemVersion);
-	if (payload->info.hardwareVersion)
-		info->hardware_ver = ic_utils_strdup(payload->info.hardwareVersion);
-	if (payload->info.firmwareVersion)
-		info->firmware_ver = ic_utils_strdup(payload->info.firmwareVersion);
-	if (payload->info.supportUrl)
-		info->support_url = ic_utils_strdup(payload->info.supportUrl);
-	if (payload->info.systemTime)
-		info->system_time = ic_utils_strdup(payload->info.systemTime);
+        
+        result = OCGetPropertyValue(payload->type, OC_RSRVD_PLATFORM_ID, info->platform_id);
+
+        result = OCGetPropertyValue(payload->type, OC_RSRVD_MFG_NAME, info->manuf_name);
+        result = OCGetPropertyValue(payload->type, OC_RSRVD_MFG_URL, info->manuf_url);
+        result = OCGetPropertyValue(payload->type, OC_RSRVD_MODEL_NUM, info->model_number);
+        result = OCGetPropertyValue(payload->type, OC_RSRVD_MFG_DATE, info->date_of_manuf);
+        result = OCGetPropertyValue(payload->type,  OC_RSRVD_PLATFORM_VERSION, info->platform_ver );
+        result = OCGetPropertyValue(payload->type,OC_RSRVD_OS_VERSION, info->os_ver);
+        result = OCGetPropertyValue(payload->type,OC_RSRVD_HARDWARE_VERSION, info->hardware_ver);
+        result = OCGetPropertyValue(payload->type, OC_RSRVD_FIRMWARE_VERSION, info->firmware_ver);
+        result = OCGetPropertyValue(payload->type, OC_RSRVD_SUPPORT_URL, info->support_url);
+        result = OCGetPropertyValue(payload->type,OC_RSRVD_SYSTEM_TIME, info->system_time);
 
 	*platform_info = info;
 
