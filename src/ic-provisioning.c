@@ -180,7 +180,7 @@ static void _provisioning_input_pin_cb(char *pin, size_t len)
 
 	RET_IF(NULL == icl_randompin_cb_container.cb);
 	RET_IF(NULL == pin);
-	RET_IF(len <= OXM_RANDOM_PIN_SIZE);
+	RET_IF(len <= OXM_RANDOM_PIN_MAX_SIZE);
 
 	temp = icl_randompin_cb_container.cb(icl_randompin_cb_container.user_data);
 	if ((NULL == temp) || (len <= strlen(temp))) {
