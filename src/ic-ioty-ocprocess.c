@@ -281,7 +281,7 @@ OCStackApplicationResult icl_ioty_ocprocess_device_info_cb(void *ctx,
 		return OC_STACK_KEEP_TRANSACTION;
 	}
 
-	ret = ic_ioty_parse_oic_device_payload((OCDevicePayload *)resp->payload,
+	ret = ic_ioty_parse_oic_device_payload((OCPayload *)resp->payload,
 			&info);
 	if (IOTCON_ERROR_NONE != ret) {
 		ERR("ic_ioty_parse_oic_device_payload() Fail(%d)", ret);
@@ -356,7 +356,7 @@ OCStackApplicationResult icl_ioty_ocprocess_platform_info_cb(void *ctx,
 		return OC_STACK_KEEP_TRANSACTION;
 	}
 
-	ret = ic_ioty_parse_oic_platform_payload((OCPlatformPayload *)resp->payload,
+	ret = ic_ioty_parse_oic_platform_payload((OCPayload *)resp->payload,
 			&info);
 	if (IOTCON_ERROR_NONE != ret) {
 		ERR("ic_ioty_parse_oic_platform_payload() Fail(%d)", ret);
