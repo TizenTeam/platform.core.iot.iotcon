@@ -38,9 +38,9 @@ int ic_ioty_parse_oic_discovery_payload(OCDevAddr *dev_addr,
 		int connectivity_prefer,
 		OCDiscoveryPayload *discovered,
 		GList **resource_list);
-int ic_ioty_parse_oic_device_payload(OCDevicePayload *payload,
+int ic_ioty_parse_oic_device_payload(OCPayload *payload,
 		iotcon_device_info_h *device_info);
-int ic_ioty_parse_oic_platform_payload(OCPlatformPayload *payload,
+int ic_ioty_parse_oic_platform_payload(OCPayload *payload,
 		iotcon_platform_info_h *platform_info);
 int ic_ioty_parse_oic_presence_payload(OCDevAddr *dev_addr,
 		OCPresencePayload *payload,
