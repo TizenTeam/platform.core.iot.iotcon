@@ -305,6 +305,10 @@ static gboolean _provisioning_register_unowned_device(gpointer p)
 
 	container = g_queue_pop_tail(icl_register_queue);
 	_provisioning_register_mutex_unlock();
+	if (NULL == container) {
+		ERR("container is NULL");
+		return G_SOURCE_CONTINUE;
+	}
 
 	dev_list = icl_provisioning_device_get_device(container->device);
 
