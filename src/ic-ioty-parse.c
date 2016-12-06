@@ -434,7 +434,7 @@ int ic_ioty_parse_oic_discovery_payload(OCDevAddr *dev_addr,
 	return IOTCON_ERROR_NONE;
 }
 
-int ic_ioty_parse_oic_device_payload(OCDevicePayload *payload,
+int ic_ioty_parse_oic_device_payload(OCPayload *payload,
 		iotcon_device_info_h *device_info)
 {
 	struct icl_device_info *info = NULL;
@@ -463,7 +463,7 @@ int ic_ioty_parse_oic_device_payload(OCDevicePayload *payload,
 	return IOTCON_ERROR_NONE;
 }
 
-int ic_ioty_parse_oic_platform_payload(OCPlatformPayload *payload,
+int ic_ioty_parse_oic_platform_payload(OCPayload *payload,
 		iotcon_platform_info_h *platform_info)
 {
 	struct icl_platform_info *info = NULL;
